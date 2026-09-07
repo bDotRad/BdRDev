@@ -2,5 +2,15 @@ venv/
 __pycache__/
 *.pyc
 state/
-tls/
 .claude-status/
+
+# TLS: track only the tooling, docs and the public root CA cert.
+# Everything else here is either secret (keys) or regenerated (leaf certs).
+tls/*.key
+tls/*.crt
+tls/*.key.bak-*
+tls/*.crt.bak-*
+tls/*.srl
+tls/ca/*.key
+tls/ca/*.srl
+tls/renew.log

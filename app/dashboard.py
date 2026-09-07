@@ -551,6 +551,7 @@ def api_ecosystem():
         "options": common.ECOSYSTEM_FIELD_OPTIONS,
         "source": source,
         "supabase_configured": fleet_db.is_configured(),
+        "fallback_reason": None if source == "supabase" else fleet_db.last_error(),
     })
 
 
@@ -568,6 +569,7 @@ def api_ecosystem_save():
     return jsonify({
         "ok": True, "ecosystem": saved, "source": source,
         "supabase_configured": fleet_db.is_configured(),
+        "fallback_reason": None if source == "supabase" else fleet_db.last_error(),
     })
 
 

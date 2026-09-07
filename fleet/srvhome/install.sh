@@ -40,6 +40,22 @@ PY
   echo "    installed hook -> $hook"
 done
 
+# --- srvhome tracks its OWN version too, when it runs from a git checkout ---
+# (the BdRPiSrvAMI deploy is a read-only BdRDev checkout run from fleet/srvhome/).
+if SELF_ROOT="$(git -C "$DIR" rev-parse --show-toplevel 2>/dev/null)"; then
+  echo "  - srvhome: backfilling own history from $SELF_ROOT (as 'srvhome')"
+  python3 record_deploy.py --backfill --path fleet/srvhome \
+    srvhome "$SELF_ROOT" "$BACKFILL_N" || true
+  hook="$SELF_ROOT/.git/hooks/post-merge"
+  install -m 0755 hooks/post-merge "$hook"
+  sed -i "s#^SRVHOME_DIR=.*#SRVHOME_DIR=\"\${SRVHOME_DIR:-$DIR}\"#" "$hook"
+  sed -i "s#^SRVHOME_APP_NAME=.*#SRVHOME_APP_NAME=\"srvhome\"#" "$hook"
+  sed -i "s#^SRVHOME_APP_PATH=.*#SRVHOME_APP_PATH=\"fleet/srvhome\"#" "$hook"
+  echo "    installed self-hook -> $hook"
+else
+  echo "  - srvhome: not a git checkout ($DIR) - self version-check disabled"
+fi
+
 # --- keepalive via user crontab (works without linger / without sudo) ---
 RUN="$DIR/run.sh"
 TMP="$(mktemp)"

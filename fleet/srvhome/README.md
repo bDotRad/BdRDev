@@ -18,9 +18,21 @@ checked out is highlighted green and tagged "live here", backfilled rows
 are muted, and the footer carries a legend.
 
 First deployment target: **BdRPiSrvAMI** (the Pi, `10.10.10.20` /
-tailnet `bdrpiami`). Canonical source of these files lives in
-`BdRDev/fleet/srvhome/`; the running copy on the Pi is
-`~/projects/BdRPiAMI/srvhome/`.
+tailnet `bdrpisrvami`). Canonical source lives in `BdRDev/fleet/srvhome/`.
+The Pi runs it from a **read-only `bDotRad/BdRDev` checkout** at
+`~/projects/BdRPiAMI/BdRDev/`, launched from `fleet/srvhome/` within it —
+so srvhome can `git pull` / version-check itself like any app (see
+"srvhome tracks itself too" below). The earlier loose file-copy deploy
+(`~/projects/BdRPiAMI/srvhome/`, redeployed by hand-copying `srvhome.py`)
+is retired — see `DEPLOY-STATUS.md` for the one-time switch-over.
+
+Served at **`/`** on that box (nginx → `127.0.0.1:8610`, see
+`nginx-snippet.conf`) — the same role the BdRDev dashboard plays at `/`
+on the dev box. It used to live under `/status/` as a sub-path purely to
+avoid touching the Supabase-owned root on first deploy; that's gone as
+of `rAMI web layout` (Supabase moved to its own port). The handler still
+accepts an optional `/status` prefix for compatibility, but nothing
+should route it there anymore.
 
 ## How history is collected
 
@@ -43,22 +55,51 @@ The page itself reads `git` live for the current HEAD and reads
 A background thread runs `git fetch` for every app every ~15 min
 (`CHECK_INTERVAL_S`) and holds `{behind, remote_sha, last_checked,
 error}` in memory (in-memory by design — a restart just re-checks within
-seconds). Each tile shows a status pill: "up to date" / "N behind —
-update available" / "serving `<sha>` — rebuild needed" / "updating…" /
-"last update failed".
+seconds).
 
-- **Check** (per tile, plus "check all now" in the section header) →
-  `POST /api/check {app?}` forces a fetch now.
-- **Update / Rebuild** (only when behind or a stale `dist/`) →
-  `POST /api/update {app}` takes a per-app lock and shells out to
-  `~/projects/update.sh <app>` — the existing pull + apply-new-migrations
-  + rebuild script, reused not reimplemented. Combined output is captured
-  and shown in a `<details>` on the tile.
+Each tile has an always-visible **status box** (`render_statusbox`): a
+status line ("up to date" / "N new commits on GitHub — Pull to deploy" /
+"serving `<sha>` — rebuild needed" / "updating…" / "last update failed"),
+a mono meta sub-line (`GitHub checked 4m ago · HEAD abc1234 · GitHub
+def5678 · built abc1234`), and — once an update has run — the captured
+`update.sh` output inline. The box's dot and the tile's left border are
+colour-coded (green / amber / blue / red).
+
+- **Check GitHub** (per tile, plus "check GitHub — all apps" in the
+  section header) → `POST /api/check {app?}` forces a fetch now.
+- **Pull** (`Pull (N)` when behind, `Rebuild` when only `dist/` is
+  stale; hidden otherwise) → `POST /api/update {app}` takes a per-app
+  lock and shells out to `~/projects/update.sh <app>` — the existing
+  pull + apply-new-migrations + rebuild script, reused not
+  reimplemented. **When GitHub is ahead the Pull button flashes**
+  (`.flash`, a blue pulse; disabled under `prefers-reduced-motion`).
+  Combined output streams into the status box.
 - `rebuild_needed` compares `git HEAD` to `app/dist/build-info.json`'s
   `sha` (each app's `vite.config.ts` writes that at build time), so a
   stale bundle after a no-op pull is visible.
 - Tiles poll `/api/state` every 15 s so the checker and a running update
   both surface without a manual reload.
+
+### srvhome tracks itself too
+
+When srvhome runs from a git checkout (the intended deploy: a read-only
+`bDotRad/BdRDev` clone, run from `fleet/srvhome/` within it), it treats
+**its own version** as one more thing to check — keyed `"srvhome"`:
+
+- a status line under the page title (`render_selfbar`) — dot + `HEAD` +
+  `branch` + last-checked age;
+- a `srvhome` sub-tile in the **Updates** card (`render_self_updates`) —
+  the same status box + **Check GitHub** / **Pull (N)** + deploy history
+  an app tile gets. `state["self"]` in `/api/state`, `self_state()`.
+- **Pull** here is `git pull --ff-only` then a self re-exec (`_self_pull`
+  / `_schedule_self_restart`) — no build step. The browser waits ~6 s
+  then reloads.
+- history is path-filtered to commits touching `fleet/srvhome/`
+  (`record_deploy.py --path`, plus `SRVHOME_APP_PATH` in the self repo's
+  `post-merge` hook), so it isn't every unrelated BdRDev commit.
+
+When srvhome is just a loose copy of the files, all of this degrades to
+"loose file copy on this box, version not tracked".
 
 History rows carry `committed_at` (the commit's own author/committer
 date) alongside the pull time; the table renders `committed | pulled |
@@ -90,7 +131,8 @@ curl -s http://127.0.0.1:8610/api/state | head
 ```
 
 Then, with sudo (Brad), add the nginx route from `nginx-snippet.conf`
-and reload — the page is then at **https://bdrpiami.local/status/**.
+and reload — the page is then at **https://bdrpisrvami.local/status/**
+(the box's hostname is now `BdRPiSrvAMI`; `bdrpiami.local` is retired).
 
 ## Adding another server later
 

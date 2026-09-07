@@ -45,7 +45,8 @@ def _clean_body(body: str) -> str:
     return "\n".join(kept).strip()
 
 
-def _log(repo: str, count: int, rev_range: str = "") -> list[dict]:
+def _log(repo: str, count: int, rev_range: str = "",
+         path_filter: str = "") -> list[dict]:
     fmt = SEP.join(["%h", "%s", "%b", "%aI"])
     args = ["git", "-C", repo, "log", "--abbrev-commit", "--abbrev=7",
             f"--pretty=format:{fmt}%x1f"]
@@ -53,6 +54,10 @@ def _log(repo: str, count: int, rev_range: str = "") -> list[dict]:
         args.append(rev_range)          # e.g. ORIG_HEAD..HEAD -- every commit a pull brought
     else:
         args.append(f"-n{count}")
+    if path_filter:
+        # only commits that touched this sub-path (srvhome's own dir), so
+        # its history isn't every unrelated BdRDev commit
+        args += ["--", path_filter]
     out = subprocess.run(args, capture_output=True, text=True, timeout=15)
     if out.returncode != 0:
         sys.stderr.write(out.stderr)
@@ -74,12 +79,20 @@ def _log(repo: str, count: int, rev_range: str = "") -> list[dict]:
 def main(argv: list[str]) -> int:
     backfill = False
     rev_range = ""
-    if argv and argv[0] == "--backfill":
-        backfill = True
-        argv = argv[1:]
-    elif argv and argv[0] == "--range" and len(argv) >= 2:
-        rev_range = argv[1]
-        argv = argv[2:]
+    path_filter = ""
+    while argv and argv[0].startswith("--"):
+        flag = argv[0]
+        if flag == "--backfill":
+            backfill = True
+            argv = argv[1:]
+        elif flag == "--range" and len(argv) >= 2:
+            rev_range = argv[1]
+            argv = argv[2:]
+        elif flag == "--path" and len(argv) >= 2:
+            path_filter = argv[1]
+            argv = argv[2:]
+        else:
+            break
 
     if len(argv) < 2:
         sys.stderr.write(__doc__)
@@ -92,10 +105,10 @@ def main(argv: list[str]) -> int:
         sys.stderr.write(f"record_deploy: {repo} is not a git repo\n")
         return 1
 
-    commits = _log(repo, count, rev_range)
+    commits = _log(repo, count, rev_range, path_filter)
     # a range that resolves to nothing (e.g. a no-op pull) -> fall back to HEAD
     if not commits and rev_range:
-        commits = _log(repo, 1)
+        commits = _log(repo, 1, "", path_filter)
     if not commits:
         sys.stderr.write("record_deploy: no commits found\n")
         return 1

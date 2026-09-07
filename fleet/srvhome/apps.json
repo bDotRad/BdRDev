@@ -3,15 +3,15 @@
     "name": "PlanBdRad",
     "path": "/home/bdr/projects/PlanBdRad",
     "description": "Asset-management planning web app — equipment hierarchy and FMECA-driven preventive-maintenance structure, backed by the self-hosted Supabase stack on this box.",
-    "url": "https://bdrpiami.local/",
-    "url_label": "planbdrad.local (pending route)"
+    "url": "https://planbdrad.local/",
+    "url_label": "planbdrad.local"
   },
   {
     "name": "BdRAMAssist",
     "path": "/home/bdr/projects/BdRAMAssist",
     "description": "Bulk asset-data prep that feeds PlanBdRad — imports COSOL/FMECA equipment exports, normalises them through skinny old→new lookup tables with a full audit trail, and emits a condensed FMECA for review.",
-    "url": "",
-    "url_label": ""
+    "url": "https://bdramassist.local/",
+    "url_label": "bdramassist.local"
   },
   {
     "name": "BdRImpSys",

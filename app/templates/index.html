@@ -1007,6 +1007,7 @@ let consolePollTimer = null;
 let ecoData = null;
 let ecoSource = null;
 let ecoConfigured = false;
+let ecoFallbackReason = null;
 let ecoOptions = {};
 
 const TAB_NAMES = ['projects', 'processing', 'workspace', 'log', 'admin', 'ecosystem'];
@@ -1883,12 +1884,14 @@ function webLinkHtml(url) {
 function renderEcoSource() {
   const el = document.getElementById('eco-source');
   if (!el) return;
-  const fallbackWhy = ecoConfigured
-    ? 'Supabase configured but unreachable'
-    : 'Supabase not configured on this box';
+  const fallbackWhy = ecoFallbackReason
+    ? ecoFallbackReason
+    : (ecoConfigured
+        ? 'Supabase configured but unreachable'
+        : 'Supabase not configured on this box');
   const txt = ecoSource === 'supabase'
     ? 'source: Supabase'
-    : (ecoSource ? `source: local JSON (${fallbackWhy})` : '');
+    : (ecoSource ? `source: local JSON — ${fallbackWhy}` : '');
   el.textContent = txt;
   el.style.display = txt ? '' : 'none';
 }
@@ -2098,14 +2101,17 @@ async function ecoSave() {
       ecoData = data.ecosystem;
       ecoSource = data.source || ecoSource;
       if ('supabase_configured' in data) ecoConfigured = !!data.supabase_configured;
+      if ('fallback_reason' in data) ecoFallbackReason = data.fallback_reason || null;
       ecoEditing = false;
       renderEcoView();
       st.className = 'ok';
       st.textContent = data.source === 'supabase'
         ? 'Saved to Supabase'
-        : (ecoConfigured
-            ? 'Saved to local JSON (Supabase unreachable)'
-            : 'Saved to local JSON (Supabase not configured on this box)');
+        : (ecoFallbackReason
+            ? `Saved to local JSON — ${ecoFallbackReason}`
+            : (ecoConfigured
+                ? 'Saved to local JSON (Supabase unreachable)'
+                : 'Saved to local JSON (Supabase not configured on this box)'));
       setTimeout(() => { st.textContent = ''; st.className = ''; }, 3000);
     } else {
       st.className = 'error';
@@ -2149,6 +2155,7 @@ async function loadEcosystem() {
     ecoData = data.ecosystem;
     ecoSource = data.source || null;
     ecoConfigured = !!data.supabase_configured;
+    ecoFallbackReason = data.fallback_reason || null;
     ecoOptions = data.options || {};
     ecoEditing = false;
     renderEcoView();

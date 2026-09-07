@@ -40,17 +40,55 @@ Write path (push_ecosystem): upsert the base tables with the service key --
 Everything here is defensive: not configured, or any HTTP/parse error,
 means fetch_ecosystem() returns None and push_ecosystem() returns False so
 the caller falls back to the JSON file. The dashboard must keep working
-with the Pi down, so timeouts are short.
+with the Pi down, so timeouts are short. Every fallback also records a
+specific reason in last_error() (and logs it) -- connection refused vs
+timeout vs HTTP 401 vs empty view vs parse error -- so "unreachable" in
+the UI stops being an undiagnosable catch-all.
 """
 
+import logging
 import os
 
 import requests
 
 import common
 
-# (connect, read) seconds -- a dead Pi must never hang the dashboard.
-REST_TIMEOUT = (5, 5)
+log = logging.getLogger("bdrdev.fleet_db")
+
+# (connect, read) seconds -- a dead Pi must never hang the dashboard, but
+# the read leg is generous enough to ride out a cold PostgREST/Postgres
+# query on a loaded Pi rather than spuriously falling back to JSON.
+REST_TIMEOUT = (4, 8)
+
+# Why the last fetch_ecosystem()/push_ecosystem() call fell back to the
+# JSON file, or None when the last call actually reached Supabase. The
+# dashboard reads this via last_error() and shows it in the source banner.
+_last_error = None
+
+
+def last_error():
+    return _last_error
+
+
+def _set_error(msg):
+    global _last_error
+    _last_error = msg
+    if msg:
+        log.warning("%s", msg)
+
+
+def _describe(exc):
+    """Short, specific reason string for a requests exception."""
+    resp = getattr(exc, "response", None)
+    if resp is not None:
+        body = " ".join((resp.text or "").split())
+        where = f"HTTP {resp.status_code}"
+        return f"{where} -- {body[:200]}" if body else where
+    if isinstance(exc, requests.Timeout):
+        return f"timed out after {REST_TIMEOUT[1]}s (Supabase slow or down)"
+    if isinstance(exc, requests.ConnectionError):
+        return f"cannot connect to {_base_url()} (Supabase stack down?)"
+    return f"{type(exc).__name__}: {exc}"
 
 # Fleet-editor per-package booleans -> software.name in the catalogue.
 # These are the only server_software links push_ecosystem() manages; other
@@ -155,15 +193,26 @@ def fetch_ecosystem():
     """Fleet dict from Supabase (normalized to common's shape), or None on
     any failure / when not configured. On success also refreshes the
     state/ecosystem.json warm cache."""
+    global _last_error
     if not is_configured():
+        _last_error = None
         return None
     try:
         rows = _rest("GET", "fleet_ecosystem_json", params={"select": "ecosystem"})
+    except requests.RequestException as e:
+        _set_error(f"Supabase read failed: {_describe(e)}")
+        return None
+    try:
         if not rows:
+            _set_error("Supabase reachable but fleet_ecosystem_json returned "
+                       "no row -- check the view and base tables")
             return None
         eco = common._normalize_ecosystem(rows[0].get("ecosystem"))
-    except (requests.RequestException, ValueError, KeyError, IndexError, TypeError):
+    except (ValueError, KeyError, IndexError, TypeError) as e:
+        _set_error(f"Supabase response could not be parsed: "
+                   f"{type(e).__name__}: {e}")
         return None
+    _last_error = None
     try:
         common.save_ecosystem(eco)
     except OSError:
@@ -178,13 +227,20 @@ def push_ecosystem(eco):
     True on full success (and mirrors it to state/ecosystem.json), False if
     not configured or any call fails -- the caller then just keeps the JSON
     file as the source of truth."""
+    global _last_error
     if not is_configured():
+        _last_error = None
         return False
     data = common._normalize_ecosystem(eco)
     try:
         _write_all(data)
-    except (requests.RequestException, ValueError, KeyError, TypeError):
+    except requests.RequestException as e:
+        _set_error(f"Supabase write failed: {_describe(e)}")
         return False
+    except (ValueError, KeyError, TypeError) as e:
+        _set_error(f"Supabase write failed: {type(e).__name__}: {e}")
+        return False
+    _last_error = None
     try:
         common.save_ecosystem(data)
     except OSError:

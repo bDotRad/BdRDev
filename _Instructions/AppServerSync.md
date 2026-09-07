@@ -1,7 +1,8 @@
 # App Server Sync
 
 Convention for projects that also run live on a separate "app server"
-machine (e.g. PlanBdRad and BdRAMAssist on `BdRSrvAMI`,
+machine (e.g. PlanBdRad and BdRAMAssist on the AMI Pi `BdRPiSrvAMI`,
+LAN `10.10.10.20` — formerly the retired `BdRSrvAMI` VM at
 `192.168.100.20`) when a change needs to be made directly on that
 machine -- a live-troubleshooting tweak, a quick config fix, whatever.
 Historically that meant pushing straight from the app server's own git
@@ -48,7 +49,7 @@ project, not scaffolded into every project by default.
   `_Requests/rAppServerChange <short name>.md` request, `READY`-marked,
   per the existing `_Requests/` convention (see `Requests.md`) -- e.g.
   "PlanBdRad app server: fixed a typo in app/scheduler.py directly on
-  BdRSrvAMI, see _AppServerDrops/app/scheduler.py for the new version,
+  BdRPiSrvAMI, see _AppServerDrops/app/scheduler.py for the new version,
   please fold it in and push." That request is what actually gets
   picked up -- the scheduler already wakes a session whenever a
   project has a `READY` request, so this reuses that existing trigger
@@ -81,19 +82,19 @@ Once the dev-side push lands, the app server does a plain `git pull`
 from any other deploy.
 
 **Deploy-key direction matters here and isn't fully in place yet** --
-this pass only documents the convention; none of the following was
-actually configured on a remote machine (out of scope, no access to
-BdRSrvAMI from this repo):
+this pass only documents the convention; none of the following has been
+re-verified on the current app server (the AMI Pi `BdRPiSrvAMI`,
+`10.10.10.20` — the notes below predate the `BdRSrvAMI` VM's retirement
+and refer to that old box):
 
 - **Pull (app server <- GitHub), required for step 3 to work at all:**
-  BdRAMAssist already has this (`id_ed25519_bdramassist` on BdRSrvAMI,
-  read-only, installed 2026-08-26 -- see `SSH.md`). PlanBdRad's
-  app-server-side key isn't in `SSH.md`'s inventory table (that table
-  only tracks BdRDev-side keys) -- `id_ed25519_planbdrad` is mentioned
-  there only in passing, as a pre-existing key on BdRSrvAMI, with its
-  actual permissions unconfirmed from this repo. Worth Brad (or a
-  future session with access to BdRSrvAMI) confirming it's read-only
-  before relying on this convention for PlanBdRad specifically.
+  on the retired `BdRSrvAMI` VM this was `id_ed25519_bdramassist`
+  (read-only, installed 2026-08-26). Whatever `BdRPiSrvAMI` uses now is
+  configured on that box under `~/projects/BdRPiAMI/` and hasn't been
+  re-confirmed from this repo. Same for PlanBdRad's app-server-side pull
+  key (was `id_ed25519_planbdrad` on the VM). Worth Brad (or a session
+  with access to `BdRPiSrvAMI` via `ssh BdRPiAMI`) confirming both are
+  read-only before relying on this convention.
 - **Push (app server -> GitHub), meant to go away under this
   convention:** if a push-capable key or credential still exists on an
   app server for a project's repo, it should be revoked or downgraded

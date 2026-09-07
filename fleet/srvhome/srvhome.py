@@ -31,6 +31,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import threading
 import time
 from datetime import datetime, timezone
@@ -58,6 +59,31 @@ PROJECTS_DIR = os.path.join(HOME, "projects")
 UPDATE_SCRIPT = os.path.join(PROJECTS_DIR, "update.sh")
 CHECK_INTERVAL_S = 900      # background "is GitHub ahead?" poll (~15 min)
 UPDATE_TIMEOUT_S = 1200     # hard cap on one git pull + npm build
+
+# srvhome tracks its OWN version the same way it tracks an app. When this
+# file runs from inside a git checkout (the BdRPiSrvAMI deploy is a
+# read-only BdRDev checkout, run from fleet/srvhome/ within it), "Check
+# GitHub" / "Pull" / deploy history all work against that repo, keyed as
+# "srvhome". When it's just a loose copy of the files, the self panel
+# degrades to "not a git checkout on this box".
+SELF_NAME = "srvhome"
+
+
+def _self_repo_root() -> str:
+    """The git work-tree root above fleet/srvhome/, or HERE when srvhome is
+    just a loose copy of the files (no checkout)."""
+    return _git(HERE, "rev-parse", "--show-toplevel") or HERE
+
+
+def self_app() -> dict:
+    """srvhome-as-an-app: the checkout it lives in, so check_one() /
+    run_update() operate on the whole repo the same as for a hosted app."""
+    return {"name": SELF_NAME, "path": _self_repo_root()}
+
+
+def checkables() -> list[dict]:
+    """Everything the version checker watches: the hosted apps + srvhome."""
+    return load_apps() + [self_app()]
 
 
 # --------------------------------------------------------------------------
@@ -337,7 +363,7 @@ def server_info() -> dict:
 # version check + one-click update
 # --------------------------------------------------------------------------
 #
-# A background thread runs `git fetch` for each app every 5 min and holds
+# A background thread runs `git fetch` for each app every ~15 min and holds
 # {behind, remote_sha, last_checked, error} in memory. "Check" forces one
 # now; "Update" shells out to ~/projects/update.sh <app> under a per-app
 # lock and keeps the captured output. State is deliberately in-memory —
@@ -389,7 +415,7 @@ def check_one(app: dict) -> dict:
 
 
 def check_all() -> None:
-    for app in load_apps():
+    for app in checkables():
         try:
             check_one(app)
         except (OSError, subprocess.SubprocessError) as exc:
@@ -411,10 +437,39 @@ def start_checker() -> None:
                      daemon=True).start()
 
 
+def _self_pull(path: str) -> tuple[str, bool]:
+    """`git pull --ff-only` the srvhome checkout. The caller schedules a
+    restart when HEAD actually moved -- there's no build step."""
+    try:
+        proc = subprocess.run(
+            ["git", "-C", path, "pull", "--ff-only", "--no-edit"],
+            capture_output=True, text=True, timeout=120,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return (f"git pull failed to start: {exc}", False)
+    out = ((proc.stdout or "") + (proc.stderr or "")).strip()
+    if proc.returncode != 0:
+        return (out or "git pull --ff-only failed", False)
+    return (out, True)
+
+
+def _schedule_self_restart(delay: float = 1.5) -> None:
+    """Re-exec srvhome so the freshly pulled code takes effect. The socket
+    has allow_reuse_address, so the new process rebinds the same port."""
+    def _restart() -> None:
+        time.sleep(delay)
+        os.execv(sys.executable, [sys.executable, os.path.abspath(__file__)])
+    threading.Thread(target=_restart, name="srvhome-self-restart",
+                     daemon=True).start()
+
+
 def run_update(name: str) -> dict:
-    """Pull + rebuild one app via ~/projects/update.sh, capturing output."""
-    apps = {a["name"]: a for a in load_apps()}
-    app = apps.get(name)
+    """Pull + rebuild one app via ~/projects/update.sh, capturing output.
+    For srvhome itself it's a plain `git pull --ff-only` + self-restart."""
+    if name == SELF_NAME:
+        app = self_app()
+    else:
+        app = {a["name"]: a for a in load_apps()}.get(name)
     if not app:
         return {"error": f"unknown app {name!r}"}
     path = os.path.expanduser(app["path"])
@@ -432,7 +487,9 @@ def run_update(name: str) -> dict:
         env["HOME"] = HOME
         env["PATH"] = os.path.expanduser("~/.local/bin") + ":" + \
             env.get("PATH", "/usr/local/bin:/usr/bin:/bin")
-        if os.path.exists(UPDATE_SCRIPT):
+        if name == SELF_NAME:
+            output, ok = _self_pull(path)
+        elif os.path.exists(UPDATE_SCRIPT):
             proc = subprocess.run(
                 ["bash", UPDATE_SCRIPT, name],
                 cwd=PROJECTS_DIR, capture_output=True, text=True,
@@ -464,6 +521,11 @@ def run_update(name: str) -> dict:
         "changed": sha_before != sha_after,
         "output_tail": output[-6000:],
     }
+    if name == SELF_NAME and ok and result["changed"]:
+        result["output_tail"] = (
+            (output + "\n\n" if output else "")
+            + f"srvhome moving {sha_before or '?'} -> {sha_after or '?'}; "
+            "restarting to load it…")[-6000:]
     with _update_meta_lock:
         _update_results[name] = result
     # the pull moved HEAD (or not) — refresh the "behind" read either way
@@ -471,6 +533,8 @@ def run_update(name: str) -> dict:
         check_one(app)
     except (OSError, subprocess.SubprocessError):
         pass
+    if name == SELF_NAME and ok and result["changed"]:
+        _schedule_self_restart()
     return result
 
 
@@ -556,6 +620,45 @@ def app_state(app: dict, history_limit: int) -> dict:
     }
 
 
+def self_state(history_limit: int) -> dict:
+    """srvhome's own version panel -- the same shape as app_state() so the
+    tile renderer and the poll JS can treat it identically. `present` is
+    False (and everything degrades) when srvhome isn't run from a checkout."""
+    present = _git(HERE, "rev-parse", "--is-inside-work-tree") == "true"
+    path = self_app()["path"]
+
+    head_sha = _git(path, "rev-parse", "--short=7", "HEAD") if present else ""
+    head_subject = _git(path, "log", "-1", "--format=%s") if present else ""
+    branch = _git(path, "rev-parse", "--abbrev-ref", "HEAD") if present else ""
+
+    con = connect(DB_PATH)
+    try:
+        rows = history_for(con, SELF_NAME, history_limit)
+        latest = latest_for(con, SELF_NAME)
+    finally:
+        con.close()
+
+    return {
+        "name": SELF_NAME,
+        "path": path,
+        "description": "",
+        "url": "", "url_label": "",
+        "present": present,
+        "has_commits": bool(head_sha),
+        "branch": branch,
+        "head_sha": head_sha,
+        "head_subject": head_subject,
+        "deployed_sha": (latest or {}).get("sha", "") or head_sha,
+        "deployed_at": (latest or {}).get("recorded_at", ""),
+        "running": None,
+        "history": rows,
+        # no build step -- srvhome is plain Python, HEAD is what runs
+        "rebuild_needed": False,
+        "built_sha": "", "built_version": "", "built_at": "",
+        **app_check_view(SELF_NAME),
+    }
+
+
 def full_state() -> dict:
     conf = load_conf()
     apps = load_apps()
@@ -566,6 +669,7 @@ def full_state() -> dict:
         "chat_enabled": bool(conf.get("chat_enabled", True))
         and bool(CLAUDE_BIN and os.path.exists(CLAUDE_BIN)),
         "info": server_info(),
+        "self": self_state(limit),
         "apps": [app_state(a, limit) for a in apps],
     }
 
@@ -668,6 +772,15 @@ body{margin:0;background:#0f1216;color:#d7dde3;
 a{color:#6cb6ff}
 header{padding:22px 28px;border-bottom:1px solid #232a31;background:#12171d}
 header h1{margin:0;font-size:19px;letter-spacing:.3px}
+header .selfbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+                margin-top:6px;font-size:12.5px;color:#c2cbd4}
+header .selfbar .dot{width:8px;height:8px;border-radius:50%;background:#8b96a1;flex:none}
+header .selfbar.s-ok .dot{background:#3fb950}
+header .selfbar.s-behind .dot{background:#e3b341}
+header .selfbar.s-busy .dot{background:#6cb6ff}
+header .selfbar.s-fail .dot{background:#f85149}
+header .selfbar .selfmeta{color:#8b96a1;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+header .selfbar .sha{color:#e2c08d;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 header .sub{color:#8b96a1;font-size:13px;margin-top:4px}
 main{padding:24px 28px;max-width:1100px;margin:0 auto}
 h2.sec{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#8b96a1;
@@ -689,6 +802,9 @@ h2.sec{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#8b96a1
 .pill.warn{color:#e3b341;border-color:#5c4813;background:#211c0f}
 .tile{background:#141a20;border:1px solid #232a31;border-left:4px solid #3a4550;
       border-radius:10px;padding:18px 20px;margin-bottom:22px}
+.card.updates{grid-column:1/-1}
+.tile.selftile{margin:12px 0 0;padding:12px 14px;background:#0f151b}
+.tile.selftile .row{margin:0 0 8px}
 .tile.is-running{border-left-color:#3fb950}
 .tile.is-unknown{border-left-color:#d29922}
 .tile.is-stopped{border-left-color:#f85149}
@@ -727,12 +843,30 @@ details.hist summary{cursor:pointer;color:#8b96a1;font-size:12.5px}
              padding:4px 12px;font:inherit;font-size:12.5px;cursor:pointer}
 .acts button.primary{background:#1f6feb;border-color:#1f6feb;color:#fff}
 .acts button:disabled{opacity:.45;cursor:default}
-.acts .checked{color:#6b7580;font-size:11.5px}
-details.out{margin:4px 0 10px}
-details.out summary{cursor:pointer;color:#8b96a1;font-size:12px}
-details.out pre{background:#0c0f13;border:1px solid #202730;border-radius:8px;
-                padding:10px 12px;font-size:12px;line-height:1.45;overflow:auto;
-                max-height:320px;white-space:pre-wrap;color:#c2cbd4}
+/* the Pull button flashes while GitHub is ahead of this box */
+@keyframes srvpulse{0%,100%{box-shadow:0 0 0 0 rgba(31,111,235,.6)}
+                    50%{box-shadow:0 0 0 7px rgba(31,111,235,0)}}
+.acts button.flash{background:#1f6feb;border-color:#1f6feb;color:#fff;
+                   animation:srvpulse 1.4s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){
+  .acts button.flash{animation:none;outline:2px solid #6cb6ff;outline-offset:2px}}
+/* per-tile status box */
+.statusbox{background:#0f151b;border:1px solid #232a31;border-radius:8px;
+           padding:10px 12px;margin:2px 0 12px}
+.statusbox .sline{font-size:13.5px;font-weight:600;color:#d7dde3;
+                  display:flex;align-items:center;gap:8px}
+.statusbox .sline::before{content:'';width:8px;height:8px;border-radius:50%;
+                          background:#8b96a1;flex:none}
+.statusbox.s-ok .sline::before{background:#3fb950}
+.statusbox.s-behind .sline::before{background:#e3b341}
+.statusbox.s-busy .sline::before{background:#6cb6ff;
+                                 animation:srvpulse 1.4s ease-in-out infinite}
+.statusbox.s-fail .sline::before{background:#f85149}
+.statusbox .smeta{color:#8b96a1;font-size:11.5px;margin-top:4px;
+                  font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.statusbox pre{background:#0c0f13;border:1px solid #202730;border-radius:6px;
+               padding:9px 11px;font-size:11.5px;line-height:1.45;overflow:auto;
+               max-height:240px;white-space:pre-wrap;color:#c2cbd4;margin:8px 0 0}
 footer{max-width:1100px;margin:0 auto;padding:8px 28px 40px;color:#6b7580;font-size:12px}
 /* chat */
 #chat{background:#141a20;border:1px solid #232a31;border-radius:10px;padding:16px}
@@ -753,14 +887,18 @@ footer{max-width:1100px;margin:0 auto;padding:8px 28px 40px;color:#6b7580;font-s
 """
 
 
-def _fmt_ts(iso: str) -> str:
+def _fmt_ts(iso: str, tz: bool = False) -> str:
     if not iso:
         return "—"
     try:
-        return datetime.fromisoformat(
-            iso.replace("Z", "+00:00")).strftime("%Y-%m-%d %H:%M")
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
     except ValueError:
         return iso
+    # commit dates carry their author's offset, recorded_at is UTC -- normalise
+    # everything to this box's local time so the two columns line up.
+    if dt.tzinfo is not None:
+        dt = dt.astimezone()
+    return dt.strftime("%Y-%m-%d %H:%M %Z" if tz else "%Y-%m-%d %H:%M")
 
 
 def _kv(k: str, v: str) -> str:
@@ -777,7 +915,7 @@ def _meter(k: str, used: float, total: float, extra: str = "") -> str:
             f"<div class='{cls}'><i style='width:{min(pct,100)}%'></i></div>")
 
 
-def render_server_panel(info: dict) -> str:
+def render_server_panel(info: dict, self_s: dict) -> str:
     h, c, m = info["host"], info["cpu"], info["mem"]
     sw, up, net, ts = info["software"], info["updates"], info["net"], info["tailscale"]
     dk = sw["docker"]
@@ -789,7 +927,7 @@ def render_server_panel(info: dict) -> str:
     o.append(_kv("os", h["os"] or "—"))
     o.append(_kv("kernel", f"{h['kernel']} ({h['arch']})"))
     o.append(_kv("uptime", h["uptime"]))
-    o.append(_kv("booted", _fmt_ts(h["booted_at"]) + " UTC"))
+    o.append(_kv("booted", _fmt_ts(h["booted_at"], tz=True)))
     o.append("</div>")
 
     o.append("<div class=card><h3>CPU &amp; memory</h3>")
@@ -821,13 +959,14 @@ def render_server_panel(info: dict) -> str:
                  __import__("sys").version_info[:3]))))
     o.append("</div>")
 
-    o.append("<div class=card><h3>Updates</h3>")
+    o.append("<div class='card updates'><h3>Updates</h3>")
     apt = up["apt_upgradable"]
     o.append(f"<span class='pill {'warn' if apt else 'ok'}'>"
              f"{apt} apt update{'s' if apt != 1 else ''}</span>")
     o.append(f"<span class='pill {'warn' if up['reboot_required'] else 'ok'}'>"
              f"{'reboot required' if up['reboot_required'] else 'no reboot needed'}"
              f"</span>")
+    o.append(render_self_updates(self_s))
     o.append("</div>")
 
     o.append("<div class=card><h3>Network</h3>")
@@ -953,7 +1092,10 @@ def status_badge(app: dict) -> tuple[str, str, str]:
     if behind is None:
         return "is-unknown", "", "not checked yet"
     if behind > 0:
-        return "is-unknown", "behind", f"{behind} behind — update available"
+        return "is-unknown", "behind", (
+            f"{behind} new commit{'s' if behind != 1 else ''} on GitHub "
+            f"— Pull to deploy"
+        )
     if app.get("rebuild_needed"):
         return "is-unknown", "behind", (
             f"serving {app.get('built_sha') or '?'} — rebuild needed"
@@ -993,16 +1135,113 @@ def render_history_rows(app: dict) -> str:
     return "".join(out)
 
 
+def _status_meta(app: dict) -> str:
+    """The mono sub-line under the status box: what's where, right now."""
+    bits: list[str] = []
+    if app.get("last_checked"):
+        bits.append(f"GitHub checked {_rel_age(app['last_checked'])}")
+    elif app["present"] and app["has_commits"]:
+        bits.append("GitHub not checked yet")
+    if app.get("head_sha"):
+        bits.append(f"HEAD {app['head_sha']}")
+    if (app.get("behind") or 0) > 0 and app.get("remote_sha"):
+        bits.append(f"GitHub {app['remote_sha']}")
+    if app.get("built_sha"):
+        bits.append(f"built {app['built_sha']}"
+                    + (" (stale)" if app.get("rebuild_needed") else ""))
+    res = app.get("last_update_result")
+    if res and res.get("finished_at"):
+        verb = "pulled" if res.get("changed") else "rebuilt"
+        outcome = verb if res.get("ok") else "update failed"
+        bits.append(f"last {outcome} {_rel_age(res['finished_at'])}")
+    return " · ".join(bits)
+
+
+def render_statusbox(app: dict) -> str:
+    """Always-visible per-tile status panel: a status line, a mono meta
+    sub-line, and (when an update has run) its captured output."""
+    _tile_cls, bcls, btext = status_badge(app)
+    skind = bcls or "none"
+    tail = (app.get("last_update_result") or {}).get("output_tail", "")
+    return (
+        f"<div class='statusbox s-{skind}' data-role=statusbox>"
+        f"<div class=sline data-role=status>{html.escape(btext)}</div>"
+        f"<div class=smeta data-role=smeta>{html.escape(_status_meta(app))}</div>"
+        f"<pre data-role=outpre{'' if tail else ' hidden'}>"
+        f"{html.escape(tail)}</pre>"
+        f"</div>"
+    )
+
+
+def render_selfbar(s: dict) -> str:
+    """The one-line version strip under the page title: srvhome's own
+    status dot + HEAD + branch + last-checked age."""
+    if not s["present"]:
+        return ("<div class='selfbar s-none' data-role=selfbar>"
+                "<span class=dot></span><span data-role=selfstatus>"
+                "srvhome — loose file copy on this box, version not tracked"
+                "</span></div>")
+    _tile, bcls, btext = status_badge(s)
+    skind = bcls or "none"
+    bits: list[str] = []
+    if s.get("head_sha"):
+        bits.append(f"HEAD <span class=sha>{html.escape(s['head_sha'])}</span>")
+    if s.get("branch"):
+        bits.append(f"branch {html.escape(s['branch'])}")
+    if s.get("last_checked"):
+        bits.append(f"GitHub checked {html.escape(_rel_age(s['last_checked']))}")
+    meta = f"<span class=selfmeta>{' · '.join(bits)}</span>" if bits else ""
+    return (
+        f"<div class='selfbar s-{skind}' data-role=selfbar>"
+        f"<span class=dot></span>"
+        f"<span data-role=selfstatus>{html.escape(btext)}</span>{meta}</div>"
+    )
+
+
+def render_self_updates(s: dict) -> str:
+    """srvhome's own GitHub block for the Updates card -- same machinery as
+    an app tile (statusbox + Check/Pull + deploy history), keyed 'srvhome'
+    so the existing delegated click + poll JS drives it unchanged."""
+    tile_cls, _b, _t = status_badge(s)
+    behind = s.get("behind") or 0
+    out = [f"<div class='tile selftile {tile_cls}' data-app='{SELF_NAME}'>"]
+    out.append("<div class=row><strong>srvhome</strong>")
+    if s.get("head_sha"):
+        out.append(f"<span>HEAD <span class='sha live' data-role=sha>"
+                   f"{html.escape(s['head_sha'])}</span></span>")
+    if s.get("branch"):
+        out.append(f"<span class=muted>branch {html.escape(s['branch'])}</span>")
+    out.append("</div>")
+
+    if s["present"] and s["has_commits"]:
+        out.append(render_statusbox(s))
+        out.append("<div class=acts>")
+        out.append("<button data-act=check>Check GitHub</button>")
+        out.append(f"<button data-act=update class='primary flash' "
+                   f"{'' if behind > 0 else 'hidden'}>Pull ({behind})</button>")
+        out.append("</div>")
+    else:
+        out.append(
+            "<div class='statusbox s-none' data-role=statusbox>"
+            "<div class=sline data-role=status>not a git checkout on this box"
+            "</div><div class=smeta data-role=smeta>redeploy srvhome from a "
+            "BdRDev checkout to enable self version-check — see "
+            "DEPLOY-STATUS.md</div>"
+            "<pre data-role=outpre hidden></pre></div>")
+    out.append(render_history_rows(s))
+    out.append("</div>")
+    return "".join(out)
+
+
 def render_apps(apps: list[dict]) -> str:
     out = ["<h2 class=sec>Apps hosted here "
-           "<button id=checkall class=linkbtn>check all now</button></h2>"]
+           "<button id=checkall class=linkbtn>check GitHub — all apps + srvhome</button></h2>"]
     if not apps:
         out.append("<p class=empty>No apps configured (see apps.json).</p>")
     for app in apps:
         name = app["name"]
-        tile_cls, bcls, btext = status_badge(app)
+        tile_cls, _bcls, _btext = status_badge(app)
         behind = app.get("behind") or 0
-        res = app.get("last_update_result")
 
         out.append(f"<div class='tile {tile_cls}' data-app='{html.escape(name)}'>")
         out.append(f"<h3>{html.escape(name)}</h3>")
@@ -1010,7 +1249,6 @@ def render_apps(apps: list[dict]) -> str:
             out.append(f"<div class=desc>{html.escape(app['description'])}</div>")
 
         out.append("<div class=row>")
-        out.append(f"<span class='badge {bcls}' data-role=status>{html.escape(btext)}</span>")
         if app["has_commits"]:
             out.append(f"<span>HEAD <span class='sha live' data-role=sha>"
                        f"{html.escape(app['head_sha'] or '?')}</span></span>")
@@ -1028,22 +1266,16 @@ def render_apps(apps: list[dict]) -> str:
         out.append("</div>")
 
         if app["has_commits"]:
-            show_update = behind > 0 or app.get("rebuild_needed")
-            update_label = f"Update ({behind})" if behind > 0 else "Rebuild"
-            out.append("<div class=acts>")
-            out.append("<button data-act=check>Check</button>")
-            out.append(f"<button data-act=update class=primary "
-                       f"{'' if show_update else 'hidden'}>{update_label}</button>")
-            out.append(f"<span class=checked data-role=checked>checked "
-                       f"{html.escape(_rel_age(app.get('last_checked', '')))}</span>")
-            out.append("</div>")
+            out.append(render_statusbox(app))
 
-            open_out = bool(res and not res.get("ok"))
-            tail = (res or {}).get("output_tail", "")
-            out.append(f"<details class=out data-role=out {'open' if open_out else ''} "
-                       f"{'' if res else 'hidden'}>"
-                       f"<summary>last update output</summary>"
-                       f"<pre data-role=outpre>{html.escape(tail)}</pre></details>")
+            show_update = behind > 0 or app.get("rebuild_needed")
+            update_label = f"Pull ({behind})" if behind > 0 else "Rebuild"
+            btn_cls = "primary flash" if behind > 0 else "primary"
+            out.append("<div class=acts>")
+            out.append("<button data-act=check>Check GitHub</button>")
+            out.append(f"<button data-act=update class='{btn_cls}' "
+                       f"{'' if show_update else 'hidden'}>{update_label}</button>")
+            out.append("</div>")
 
         out.append(render_history_rows(app))
         out.append("</div>")
@@ -1070,30 +1302,55 @@ APPS_SCRIPT = r"""
   function badge(app){
     if(app.updating) return ['busy','updating…'];
     if(app.last_update_result && !app.last_update_result.ok) return ['fail','last update failed'];
-    if(app.check_error) return ['','check failed'];
-    if(app.behind===null||app.behind===undefined) return ['','not checked yet'];
-    if(app.behind>0) return ['behind', app.behind+' behind — update available'];
+    if(app.check_error) return ['none','check failed'];
+    if(app.behind===null||app.behind===undefined) return ['none','not checked yet'];
+    if(app.behind>0) return ['behind',
+      app.behind+' new commit'+(app.behind===1?'':'s')+' on GitHub — Pull to deploy'];
     if(app.rebuild_needed) return ['behind','serving '+(app.built_sha||'?')+' — rebuild needed'];
     return ['ok','up to date'];
   }
+  function metaLine(app){
+    var b=[];
+    if(app.last_checked) b.push('GitHub checked '+rel(app.last_checked));
+    else if(app.head_sha) b.push('GitHub not checked yet');
+    if(app.head_sha) b.push('HEAD '+app.head_sha);
+    if(app.behind>0 && app.remote_sha) b.push('GitHub '+app.remote_sha);
+    if(app.built_sha) b.push('built '+app.built_sha+(app.rebuild_needed?' (stale)':''));
+    var r=app.last_update_result;
+    if(r && r.finished_at){
+      var v=r.changed?'pulled':'rebuilt';
+      b.push('last '+(r.ok?v:'update failed')+' '+rel(r.finished_at));
+    }
+    return b.join(' · ');
+  }
   function apply(state){
-    (state.apps||[]).forEach(function(app){
+    var all=(state.apps||[]).slice();
+    if(state.self && state.self.present) all.push(state.self);
+    all.forEach(function(app){
       var tile=document.querySelector('.tile[data-app="'+app.name+'"]');
       if(!tile) return;
-      var b=badge(app), st=tile.querySelector('[data-role=status]');
-      if(st){ st.className='badge '+b[0]; st.textContent=b[1]; }
+      var b=badge(app), box=tile.querySelector('[data-role=statusbox]');
+      if(box && !tile.dataset.busy){
+        box.className='statusbox s-'+b[0];
+        var st=box.querySelector('[data-role=status]');
+        if(st) st.textContent=b[1];
+        var mt=box.querySelector('[data-role=smeta]');
+        if(mt) mt.textContent=metaLine(app);
+        var pre=box.querySelector('[data-role=outpre]'),
+            tail=(app.last_update_result||{}).output_tail||'';
+        if(pre){ pre.hidden=!tail; if(tail) pre.textContent=tail; }
+      }
       var sha=tile.querySelector('[data-role=sha]');
       if(sha && app.head_sha) sha.textContent=app.head_sha;
       var bs=tile.querySelector('[data-role=builtsha]');
       if(bs && app.built_sha){ bs.textContent=app.built_sha;
         bs.className = app.rebuild_needed ? 'sha' : 'sha live'; }
-      var ck=tile.querySelector('[data-role=checked]');
-      if(ck) ck.textContent='checked '+rel(app.last_checked);
       var upd=tile.querySelector('[data-act=update]');
       if(upd && !upd.dataset.busy){
         if(app.behind>0 || app.rebuild_needed){
           upd.hidden=false;
-          upd.textContent = app.behind>0 ? 'Update ('+app.behind+')' : 'Rebuild';
+          upd.textContent = app.behind>0 ? 'Pull ('+app.behind+')' : 'Rebuild';
+          upd.className = app.behind>0 ? 'primary flash' : 'primary';
         } else { upd.hidden=true; }
       }
     });
@@ -1107,38 +1364,64 @@ APPS_SCRIPT = r"""
     if(btn.id==='checkall'){
       btn.disabled=true; btn.textContent='checking…';
       post('api/check').then(function(){ return refresh(); })
-        .finally(function(){ btn.disabled=false; btn.textContent='check all now'; });
+        .finally(function(){ btn.disabled=false; btn.textContent='check GitHub — all apps + srvhome'; });
       return;
     }
     var tile=btn.closest('.tile[data-app]'); if(!tile) return;
     var app=tile.dataset.app;
+    var box=tile.querySelector('[data-role=statusbox]');
+    function setStatus(kind,text){
+      if(!box) return;
+      box.className='statusbox s-'+kind;
+      var st=box.querySelector('[data-role=status]');
+      if(st) st.textContent=text;
+    }
 
     if(btn.dataset.act==='check'){
-      btn.disabled=true;
+      btn.disabled=true; var t=btn.textContent; btn.textContent='checking…';
       post('api/check',{app:app}).then(function(){ return refresh(); })
-        .finally(function(){ btn.disabled=false; });
+        .finally(function(){ btn.disabled=false; btn.textContent=t; });
     }
     else if(btn.dataset.act==='update'){
-      if(!confirm('Pull and rebuild '+app+' on this server now?')) return;
-      btn.dataset.busy='1'; btn.disabled=true; btn.textContent='updating…';
-      var st=tile.querySelector('[data-role=status]');
-      if(st){ st.className='badge busy'; st.textContent='updating…'; }
-      var out=tile.querySelector('[data-role=out]'),
-          pre=tile.querySelector('[data-role=outpre]');
+      var isSelf=(app==='srvhome');
+      var ask=isSelf
+        ? 'Pull the latest srvhome from GitHub and restart this dashboard now?'
+        : 'Pull the latest '+app+' from GitHub and rebuild it on this server now?';
+      if(!confirm(ask)) return;
+      tile.dataset.busy='1';
+      btn.dataset.busy='1'; btn.disabled=true; btn.textContent='Pulling…';
+      btn.className='primary';
+      setStatus('busy', isSelf ? 'pulling from GitHub and restarting…'
+                               : 'pulling from GitHub and rebuilding…');
+      var pre=box && box.querySelector('[data-role=outpre]');
+      if(pre){ pre.hidden=false;
+        pre.textContent=isSelf ? 'git pull --ff-only srvhome …'
+                               : 'running update.sh '+app+' …'; }
       post('api/update',{app:app}).then(function(res){
         var j=res.j||{};
-        if(out){ out.hidden=false; out.open=true; }
         if(pre) pre.textContent=j.output_tail||j.error||'(no output)';
         if(j.ok){
-          if(st){ st.className='badge ok'; st.textContent='updated — reloading'; }
-          setTimeout(function(){ location.reload(); }, 1800);
+          if(isSelf && j.changed){
+            setStatus('busy','restarting srvhome — reloading shortly');
+            setTimeout(function(){ location.reload(); }, 6000);
+          } else if(isSelf){
+            setStatus('ok','already up to date');
+            delete tile.dataset.busy;
+            delete btn.dataset.busy; btn.disabled=false; btn.textContent='Pull (0)';
+          } else {
+            setStatus('ok','pulled — reloading');
+            setTimeout(function(){ location.reload(); }, 1800);
+          }
         } else {
-          if(st){ st.className='badge fail'; st.textContent='update failed'; }
-          delete btn.dataset.busy; btn.disabled=false; btn.textContent='Retry update';
+          setStatus('fail','update failed — see output below');
+          delete tile.dataset.busy;
+          delete btn.dataset.busy; btn.disabled=false; btn.textContent='Retry Pull';
         }
       }).catch(function(e){
-        if(pre){ if(out) out.hidden=false; pre.textContent=String(e); }
-        delete btn.dataset.busy; btn.disabled=false; btn.textContent='Retry update';
+        if(pre){ pre.hidden=false; pre.textContent=String(e); }
+        setStatus('fail','update failed — see output below');
+        delete tile.dataset.busy;
+        delete btn.dataset.busy; btn.disabled=false; btn.textContent='Retry Pull';
       });
     }
   });
@@ -1157,10 +1440,11 @@ def render_html(state: dict) -> str:
         f"<style>{PAGE_CSS}</style></head><body>",
         "<header>",
         f"<h1>{e(state['server'])} — server dashboard</h1>",
+        render_selfbar(state["self"]),
         f"<div class=sub>Hardware, stack, hosted apps and deploy history. "
-        f"Generated {e(_fmt_ts(state['generated_at']))} UTC.</div>",
+        f"Generated {e(_fmt_ts(state['generated_at'], tz=True))}.</div>",
         "</header><main>",
-        render_server_panel(state["info"]),
+        render_server_panel(state["info"], state["self"]),
         render_apps(state["apps"]),
         APPS_SCRIPT,
     ]
@@ -1169,7 +1453,7 @@ def render_html(state: dict) -> str:
     out.append("</main>")
     out.append(
         "<footer>srvhome &middot; canonical source: BdRDev/fleet/srvhome "
-        "&middot; GitHub checked every ~5&nbsp;min; tiles refresh every ~15s; "
+        "&middot; GitHub checked every ~15&nbsp;min; tiles refresh every ~15s; "
         "history written by each repo's git post-merge hook</footer></body></html>")
     return "".join(out)
 
@@ -1234,7 +1518,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/check":
                 app = body.get("app")
                 if app:
-                    apps = {a["name"]: a for a in load_apps()}
+                    apps = {a["name"]: a for a in checkables()}
                     if app not in apps:
                         self._send(404, b'{"error":"unknown app"}', "application/json")
                         return

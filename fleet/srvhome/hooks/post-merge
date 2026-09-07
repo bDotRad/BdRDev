@@ -10,7 +10,12 @@
 # Kept tiny and non-fatal: a hook failure must never break `git pull`.
 
 SRVHOME_DIR="${SRVHOME_DIR:-/home/bdr/projects/BdRPiAMI/srvhome}"
-APP_NAME="$(basename "$(git rev-parse --show-toplevel 2>/dev/null)")"
+# srvhome's own checkout records as "srvhome" (not its dir basename "BdRDev")
+# and only for commits under fleet/srvhome/ -- install.sh seds both of these
+# in for that one repo; they stay empty in every app repo's copy.
+SRVHOME_APP_NAME="${SRVHOME_APP_NAME:-}"
+SRVHOME_APP_PATH="${SRVHOME_APP_PATH:-}"
+APP_NAME="${SRVHOME_APP_NAME:-$(basename "$(git rev-parse --show-toplevel 2>/dev/null)")}"
 REPO_PATH="$(git rev-parse --show-toplevel 2>/dev/null)"
 
 [ -n "$APP_NAME" ] || exit 0
@@ -24,6 +29,9 @@ if git rev-parse --verify -q ORIG_HEAD >/dev/null; then
   RANGE="--range ORIG_HEAD..HEAD"
 fi
 
-python3 "$SRVHOME_DIR/record_deploy.py" $RANGE "$APP_NAME" "$REPO_PATH" \
+PATH_ARG=""
+[ -n "$SRVHOME_APP_PATH" ] && PATH_ARG="--path $SRVHOME_APP_PATH"
+
+python3 "$SRVHOME_DIR/record_deploy.py" $RANGE $PATH_ARG "$APP_NAME" "$REPO_PATH" \
   >>"$SRVHOME_DIR/hook.log" 2>&1 || true
 exit 0

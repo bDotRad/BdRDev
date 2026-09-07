@@ -65,11 +65,13 @@ what counts as "pending".
   grids — **Servers** (address, Tailscale IP, `local_url` LAN/mDNS
   address, `ts_url` Tailscale front-door URL, host/OS/RAM/disk, the
   Claude/Nginx/Supabase/SQLite Y/N flags, git notes) and **Projects**
-  (dev-agent role matrix, runs-on server, web URL, database, status) —
+  (dev-agent role matrix, runs-on server, `local_url` + `ts_url`,
+  database, status) —
   plus a free-text notes block. Each grid also has CSV export / import.
   Dashboard-only — the scheduler never reads it.
-  - **Source of truth**: a self-hosted Supabase (Postgres) on BdRPiAMI —
-    schema in `supabase/migrations/`, read back through the
+  - **Source of truth**: this box's own self-hosted Supabase (Postgres)
+    at `http://127.0.0.1:8000` (`bdrpisrvdev` is the fleet/ecosystem
+    master) — schema in `supabase/migrations/`, read back through the
     `public.fleet_ecosystem_json` view, written via PostgREST with the
     service key. `app/fleet_db.py` is the client (plain `requests`, no
     `supabase`/`psycopg2`). Configured by env vars on the dashboard
@@ -140,6 +142,21 @@ Check they're both up:
 ```bash
 systemctl status bdrdev-dashboard bdrdev-scheduler
 ```
+
+### HTTPS / trusted certs
+
+`nginx/bdrdev.conf` reverse-proxies `:8420` behind HTTPS with two
+front doors, split by SNI:
+
+- `https://bdrpisrvdev.tail0ed3f6.ts.net` — a real Let's Encrypt cert
+  from `tailscale cert`, trusted on every device with no setup
+  (tailnet-only).
+- `https://bdrpisrvdev.local` / `https://bdrdev.local` / LAN IP — a leaf
+  signed by a local root CA; install `tls/ca/bdr-fleet-ca.crt` once per
+  device and the warning is gone on the LAN and offline.
+
+Full setup, per-device trust steps and the 90-day Tailscale-cert renewal
+cron are in [tls/README.md](tls/README.md).
 
 ## Notes
 
