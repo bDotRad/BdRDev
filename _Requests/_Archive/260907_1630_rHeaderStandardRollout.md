@@ -1,113 +1,102 @@
-WAITING RESPONSE
+# HeaderStandard rollout — promote LV-G to WebUI.md and roll it out
 
-<!-- Brad asked "is this all done?" — almost. Tasks 1/2/4/5 done, Task 2
-     verified live. Only Task 3 (deploy srvhome to BdRPiSrvAMI) is left,
-     and it's on the AMI Pi, unreachable from this dev box. Action block
-     is in the "Restarts" section below. Set back to WAITING RESPONSE
-     because that srvhome deploy is a Brad step. -->
+**Processed 2026-09-07. Done + deployed.** BdRDev commits `afc280a`
+(code) and follow-ups `a687054` / `7923c09` (request bookkeeping).
 
-<!-- ─────────────────────────────────────────────────────────────────
-     2026-09-07: code for tasks 1–5 done, committed + pushed
-     (BdRDev afc280a). srvhome deploy to BdRPiSrvAMI remains — Action
-     block below. Archive once that's done and verified.
-     (An earlier 13:47 pass had stopped without editing because the
-     working tree held ~820 lines of unrelated uncommitted WIP; Brad
-     committed that as 1fb5a13 and confirmed the standard block should
-     replace whatever header each app has — including srvhome's
-     .selfbar. Work then proceeded from the clean tree.) -->
+## What was asked
 
-## What was done (BdRDev commit `afc280a`, pushed)
+Follow-up to the BdRWebGUIDev "chooser" request: Brad picked header
+variant **LV-G**. Promote it into `_Instructions/WebUI.md` as the fleet
+standard header block, adopt it on the BdRDev dashboard (degraded form)
+and srvhome (full three-line form), then flip the fan-out request
+markers in the three SPA/showcase repos so their own schedulers pick up
+the per-app adoption.
 
-**Task 1 — `_Instructions/WebUI.md`:**
-- New `## Standard header block` section: LV-G description (three lines),
-  reference markup, reference CSS (`sh-*`), status-pill behaviour,
-  graceful-degradation rule. Points at BdRWebGUIDev Templates → Logo &
-  Version for the explorations; names the BdRDev dashboard header as the
-  degraded-form reference and srvhome as the full-form reference.
-- Versioning section rewritten: 7-char SHA stays canonical; where the
-  standard header is rendered the version line *displays* as
-  `YYYY.MM.DD_HHMM · <7-char-SHA>`; footer may stay SHA-only.
+## What was done
 
-**Task 2 — BdRDev dashboard (`app/templates/index.html`, `app/common.py`):**
+### 1. `_Instructions/WebUI.md`
+- New **`## Standard header block`** section: the LV-G spec — three-line
+  description, reference markup, reference CSS (`sh-*` classes),
+  status-pill behaviour, graceful-degradation rule. Points at
+  BdRWebGUIDev **Templates → Logo & Version** for the seven explorations
+  and names the BdRDev dashboard header (degraded form) + srvhome
+  (full form) as the reference implementations.
+- **Versioning** section rewritten: the 7-char SHA stays the canonical
+  version identifier; where the standard header is rendered the version
+  line is *displayed* as `YYYY.MM.DD_HHMM · <7-char-SHA>`; a footer
+  version may stay SHA-only.
+
+### 2. BdRDev dashboard — `app/templates/index.html`, `app/common.py`
 - `#header-row` (logo + `<h1>BdR AI GUI</h1>` + `#site-version`) →
-  `.site-header` standard block, **degraded form** (no status line — the
-  dashboard has no version check). Name `BDR AI GUI` (`BDR` white).
+  `.site-header` standard block, **degraded form** (no deploy-status
+  line — the dashboard has no running-vs-origin check). Name
+  `BDR AI GUI`, `BDR` in white.
 - `common.app_version()` now returns the display format
-  `YYYY.MM.DD_HHMM · <7-char-SHA>` (was `yymmdd_hhmmss <hash>`). It's
-  the only caller of that helper. Verified via a local Jinja render:
-  `2026.09.07_1358 · 1fb5a13`.
+  `YYYY.MM.DD_HHMM · <7-char-SHA>` (was `yymmdd_hhmmss <hash>`); it is
+  the only caller of that helper.
+- **Verified live:** dashboard restarted 14:33 (admin "restart"
+  button). `https://bdrpisrvdev.tail0ed3f6.ts.net/` serves
+  `class="site-header"`, `<b>BDR</b> AI GUI`,
+  `sh-ver">2026.09.07_1411 · a687054`. NB the dashboard now answers on
+  plain **443**, not the old `:8444` (that port has nothing listening
+  since the nginx/TLS rework in `1fb5a13`; `:8443` is CloudCLI UI).
 
-**Task 3 — srvhome (`fleet/srvhome/srvhome.py`):**
-- `render_selfbar()` → `render_site_header()`: the standard block, **full
-  three-line form** (srvhome has the running-vs-origin check). Pill =
-  the "re-check GitHub" button, wired to the existing
-  `POST /api/check {app:"srvhome"}`; `.behind` toggles amber; poll JS
-  (`applyHeader`) keeps it live.
-- **Deviation from the reference:** the second status chip is `running`
-  (the SHA the live process started from, frozen at boot via
-  `running_sha()`), not `built` — srvhome has no build step. It goes
-  amber if HEAD drifts ahead of the running process (pull without
-  restart). Recorded in `srvhome/DEPLOY-STATUS.md` + `README.md`, not
-  forked back into WebUI.md.
-- Logo: new `GET /logo.png` route serving the checkout's own
-  `app/static/rat-logo.png`; degrades to no-logo when srvhome is a
-  loose file copy. `sh-*` CSS ported into `PAGE_CSS` mapped to
-  srvhome's literal palette.
-- Smoke-tested locally: `GET /` renders the header, `/logo.png` +
-  `/status/logo.png` serve the PNG, `POST /api/check {app:"srvhome"}`
-  returns `self.behind`, `APPS_SCRIPT` passes `node --check`.
+### 3. srvhome — `fleet/srvhome/srvhome.py`
+- `render_selfbar()` → `render_site_header()`: the standard block.
+  **Full three-line form** when srvhome runs from a git checkout
+  (`present == True`); the version-pill is the "re-check GitHub" button,
+  wired to the existing `POST /api/check {app:"srvhome"}`; `.behind`
+  toggles the amber state; poll JS (`applyHeader`) keeps it live.
+- **Deviation from the reference, recorded in srvhome's own docs:** the
+  second status chip is `running` (the 7-char SHA the live process
+  booted from, frozen via `running_sha()`), not `built` — srvhome has
+  no build step. It goes amber if HEAD drifts ahead of the running
+  process (pull without restart).
+- New `GET /logo.png` route serving the checkout's own
+  `app/static/rat-logo.png`; the header omits the logo when that path
+  isn't reachable (loose-copy deploy).
+- `sh-*` CSS ported into `PAGE_CSS`, mapped to srvhome's literal
+  palette. `srvhome/DEPLOY-STATUS.md` + `README.md` header descriptions
+  updated.
+- Smoke-tested locally (render, `/logo.png`, `/api/check`, `APPS_SCRIPT`
+  through `node --check`) and py-compiled on the AMI Pi's Python 3.12.
+- **Deployed to BdRPiSrvAMI** (`~/projects/BdRPiAMI/srvhome/`, a loose
+  file copy kept alive by a per-minute `run.sh` cron — no systemd, no
+  sudo). `srvhome.py` + the two docs `scp`'d over, the running process
+  bounced, cron/`run.sh` relaunched it. `http://127.0.0.1:8610/`
+  (→ `https://bdrpiami.local/status/`) now renders the standard header,
+  in **degraded form**: `SRVHOME — loose file copy on this box, version
+  not tracked`, no logo (404 on `/logo.png` in the loose layout).
+  Graceful degradation is explicitly part of the spec — this is
+  expected until srvhome is redeployed as a read-only BdRDev checkout
+  (a pre-existing TODO in `srvhome/DEPLOY-STATUS.md`, its own job). Only
+  then do the logo, version line and status pill light up.
 
-**Task 4 — fan-out markers flipped to `READY`** (their own schedulers
-pick the work up; not edited from here):
+### 4. Fan-out markers → `READY` (not edited from here, per the request)
 - `BdRWebGUIDev/_Requests/rHeaderAdoptLVG.md`
 - `PlanBdRad/_Requests/rAdoptStandardHeader.md`
 - `BdRAMAssist/_Requests/rAdoptStandardHeader.md`
 
-**Task 5 —** srvhome `DEPLOY-STATUS.md` + `README.md` header
-descriptions updated to the new block. `apps.json` identity blocks
-didn't reference the old header, so no change there.
+### 5. (Optional) apps.json / ecosystem notes
+`apps.json` identity blocks didn't reference the old header — no change.
 
-## Restarts
+## Follow-ups (not blockers)
 
-**Task 2 — DONE & verified 2026-09-07 ~15:1x.** The dashboard was
-restarted (admin "restart" button, 14:33) and now serves the new
-header: `https://bdrpisrvdev.tail0ed3f6.ts.net/` shows
-`class="site-header"`, `<b>BDR</b> AI GUI`, `sh-ver">2026.09.07_1411 ·
-a687054`. NB the dashboard is on **plain 443 now** (the nginx/TLS rework
-in `1fb5a13`), not `:8444` — that port has nothing listening and `:8443`
-is CloudCLI UI. If you still want a `:8444` listener that's a separate
-nginx-config question (`nginx/bdrdev.conf` only defines 80/443 now).
-
-**Task 3 — still needs deploying to BdRPiSrvAMI:**
-
-@@@ --- Action --- @@@
-
-1. Deploy the srvhome change to BdRPiSrvAMI  # runs on the Pi, via SSH
-
-"Pull the new srvhome code on the app server (it tracks BdRDev)"
-cd ~/projects/BdRPiSrvAMI && git pull --ff-only
-
-"Restart srvhome however it's run there (systemd unit name may differ)"
-sudo systemctl restart srvhome
-
-"Confirm the standard header + logo route respond"
-curl -s http://localhost:8610/status/ | grep -o 'data-role=siteheader\|id=shPill'
-curl -sI http://localhost:8610/status/logo.png | head -1
-
-   NB: DEPLOY-STATUS.md says the current Pi srvhome may still be a *loose
-   file copy* (not a checkout). If so: the header degrades gracefully
-   (logo + `SRVHOME` + "loose file copy… version not tracked") and step
-   2's `git pull` doesn't apply — copy the files the usual way, or
-   redeploy srvhome as a read-only BdRDev checkout per DEPLOY-STATUS.md
-   to light up the full three-line form.
-
-@@@ ------------- @@@
-
-Once both restarts are done and the header looks right, archive this
-(`_Archive/`, commit, push). If the dashboard or srvhome header renders
-wrong, flip back to `READY` with a note.
+- **srvhome full-form header** needs the AMI Pi deploy converted from a
+  loose file copy to a read-only BdRDev checkout run from
+  `fleet/srvhome/` — already flagged in `srvhome/DEPLOY-STATUS.md`.
+  Until then srvhome shows the degraded header (name only).
+- The three fan-out repos will adopt the header via their own scheduled
+  sessions now that their markers are `READY`.
+- If Brad wants the old `:8444` dashboard URL back, that's a separate
+  nginx-config change (`nginx/bdrdev.conf` only defines 80/443 now).
 
 ---
+
+## Original request (verbatim)
+
+```
+READY
 
 # Standard header block — promote LV-G to WebUI.md and roll it out
 
@@ -288,3 +277,4 @@ per-app follow-up if Brad wants the status line everywhere.
   the dashboard, `BDR WEB GUI DEV` for the showcase.
 - Logo asset is `rat-logo.png` served at `/static/rat-logo.png`
   (already present in BdRDev and now BdRWebGUIDev).
+```
