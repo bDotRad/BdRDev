@@ -1,10 +1,15 @@
 WAITING RESPONSE
 
+<!-- Brad asked "is this all done?" — almost. Tasks 1/2/4/5 done, Task 2
+     verified live. Only Task 3 (deploy srvhome to BdRPiSrvAMI) is left,
+     and it's on the AMI Pi, unreachable from this dev box. Action block
+     is in the "Restarts" section below. Set back to WAITING RESPONSE
+     because that srvhome deploy is a Brad step. -->
+
 <!-- ─────────────────────────────────────────────────────────────────
      2026-09-07: code for tasks 1–5 done, committed + pushed
-     (BdRDev afc280a). Two live restarts remain — Action block below.
-     Flip to READY only if something's wrong; otherwise archive once
-     the restarts are done and verified.
+     (BdRDev afc280a). srvhome deploy to BdRPiSrvAMI remains — Action
+     block below. Archive once that's done and verified.
      (An earlier 13:47 pass had stopped without editing because the
      working tree held ~820 lines of unrelated uncommitted WIP; Brad
      committed that as 1fb5a13 and confirmed the standard block should
@@ -62,20 +67,22 @@ pick the work up; not edited from here):
 descriptions updated to the new block. `apps.json` identity blocks
 didn't reference the old header, so no change there.
 
-## Restarts still needed (only Brad can)
+## Restarts
+
+**Task 2 — DONE & verified 2026-09-07 ~15:1x.** The dashboard was
+restarted (admin "restart" button, 14:33) and now serves the new
+header: `https://bdrpisrvdev.tail0ed3f6.ts.net/` shows
+`class="site-header"`, `<b>BDR</b> AI GUI`, `sh-ver">2026.09.07_1411 ·
+a687054`. NB the dashboard is on **plain 443 now** (the nginx/TLS rework
+in `1fb5a13`), not `:8444` — that port has nothing listening and `:8443`
+is CloudCLI UI. If you still want a `:8444` listener that's a separate
+nginx-config question (`nginx/bdrdev.conf` only defines 80/443 now).
+
+**Task 3 — still needs deploying to BdRPiSrvAMI:**
 
 @@@ --- Action --- @@@
 
-1. Pick up the new dashboard header on the live BdRDev dashboard
-   (Flask, no autoreload — needs a real restart)
-
-"Restart the dashboard service"
-sudo systemctl restart bdrdev-dashboard
-
-"Confirm the standard header block is in the served HTML"
-curl -s http://localhost:8420/ | grep -o 'class="site-header"[^>]*\|sh-name[^<]*<b>BDR</b>[^<]*\|sh-ver">[^<]*'
-
-2. Deploy the srvhome change to BdRPiSrvAMI  # runs on the Pi, via SSH
+1. Deploy the srvhome change to BdRPiSrvAMI  # runs on the Pi, via SSH
 
 "Pull the new srvhome code on the app server (it tracks BdRDev)"
 cd ~/projects/BdRPiSrvAMI && git pull --ff-only
