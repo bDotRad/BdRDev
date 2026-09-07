@@ -97,7 +97,7 @@ def checkables() -> list[dict]:
 
 def load_conf() -> dict:
     conf = {"server": os.uname().nodename, "display_name": "",
-            "bind_host": "127.0.0.1",
+            "full_name": "", "bind_host": "127.0.0.1",
             "bind_port": 8610, "history_limit": 40,
             "chat_enabled": True, "chat_extra_args": [],
             "chat_timeout_s": 180, "chat_max_prompt": 4000}
@@ -688,6 +688,7 @@ def full_state() -> dict:
     limit = int(conf.get("history_limit", 40))
     return {
         "server": conf.get("server") or os.uname().nodename,
+        "full_name": conf.get("full_name") or "",
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "chat_enabled": bool(conf.get("chat_enabled", True))
         and bool(CLAUDE_BIN and os.path.exists(CLAUDE_BIN)),
@@ -1534,7 +1535,7 @@ def render_html(state: dict) -> str:
     out = [
         "<!doctype html><html lang=en><head><meta charset=utf-8>",
         "<meta name=viewport content='width=device-width,initial-scale=1'>",
-        f"<title>{e(state['server'])} — server dashboard</title>",
+        f"<title>{e(state.get('full_name') or state['server'])} — server dashboard</title>",
         f"<style>{PAGE_CSS}</style></head><body>",
         "<header>",
         render_site_header(state["self"]),

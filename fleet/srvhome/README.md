@@ -119,7 +119,7 @@ commit`.
 | `store.py` | SQLite schema + helpers for `deploys` |
 | `record_deploy.py` | records a repo's HEAD into the DB (hook + `--backfill`) |
 | `apps.json` | which apps this server hosts (`name` + repo `path`) |
-| `srvhome.conf.json` | `server`, header `display_name`, bind host/port, history limit |
+| `srvhome.conf.json` | `server`, header `display_name`, `<title>` `full_name`, bind host/port, history limit |
 | `hooks/post-merge` | the git hook `install.sh` copies into each app repo |
 | `install.sh` | back-fill + install hooks + crontab keepalive (no sudo) |
 | `run.sh` | idempotent starter used by the crontab |
