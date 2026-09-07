@@ -1,97 +1,104 @@
 WAITING RESPONSE
 
 <!-- ─────────────────────────────────────────────────────────────────
-     2026-09-07 13:47 — unattended session, could not start safely.
-     Blocked on the state of the BdRDev working tree. Details below;
-     original request text is intact underneath. -->
+     2026-09-07: code for tasks 1–5 done, committed + pushed
+     (BdRDev afc280a). Two live restarts remain — Action block below.
+     Flip to READY only if something's wrong; otherwise archive once
+     the restarts are done and verified.
+     (An earlier 13:47 pass had stopped without editing because the
+     working tree held ~820 lines of unrelated uncommitted WIP; Brad
+     committed that as 1fb5a13 and confirmed the standard block should
+     replace whatever header each app has — including srvhome's
+     .selfbar. Work then proceeded from the clean tree.) -->
 
-## Why this pass didn't touch anything
+## What was done (BdRDev commit `afc280a`, pushed)
 
-The BdRDev checkout has a large pile of **uncommitted, unrelated
-work-in-progress** — ~820 changed lines across 17 tracked files plus a
-new untracked `tls/` dir. `origin/master..master` is empty, so none of
-it is on GitHub; it's all live in the working tree, dating from Sep 4–6
-(and `app/templates/index.html` was modified today at 13:21, i.e. after
-this session's tmux was created at 13:45 — a second Claude session,
-`proj-_IndependentClaude`, has been running since 13:07 and may still be
-editing these files).
+**Task 1 — `_Instructions/WebUI.md`:**
+- New `## Standard header block` section: LV-G description (three lines),
+  reference markup, reference CSS (`sh-*`), status-pill behaviour,
+  graceful-degradation rule. Points at BdRWebGUIDev Templates → Logo &
+  Version for the explorations; names the BdRDev dashboard header as the
+  degraded-form reference and srvhome as the full-form reference.
+- Versioning section rewritten: 7-char SHA stays canonical; where the
+  standard header is rendered the version line *displays* as
+  `YYYY.MM.DD_HHMM · <7-char-SHA>`; footer may stay SHA-only.
 
-The three files this request has to edit are **all** in that pile:
+**Task 2 — BdRDev dashboard (`app/templates/index.html`, `app/common.py`):**
+- `#header-row` (logo + `<h1>BdR AI GUI</h1>` + `#site-version`) →
+  `.site-header` standard block, **degraded form** (no status line — the
+  dashboard has no version check). Name `BDR AI GUI` (`BDR` white).
+- `common.app_version()` now returns the display format
+  `YYYY.MM.DD_HHMM · <7-char-SHA>` (was `yymmdd_hhmmss <hash>`). It's
+  the only caller of that helper. Verified via a local Jinja render:
+  `2026.09.07_1358 · 1fb5a13`.
 
-- `_Instructions/WebUI.md` — has an uncommitted new "Import / export"
-  section + a "Confirm destructive saves" note.
-- `app/templates/index.html` — uncommitted `ecoFallbackReason` plumbing.
-- `fleet/srvhome/srvhome.py` — **+412 uncommitted lines**: an
-  in-progress "srvhome tracks its own version" feature that *adds* the
-  `header .selfbar` block. Task 3 says to *replace* `header h1` +
-  `.selfbar` with the standard block — i.e. this request and that
-  unfinished feature collide directly in the same code region.
+**Task 3 — srvhome (`fleet/srvhome/srvhome.py`):**
+- `render_selfbar()` → `render_site_header()`: the standard block, **full
+  three-line form** (srvhome has the running-vs-origin check). Pill =
+  the "re-check GitHub" button, wired to the existing
+  `POST /api/check {app:"srvhome"}`; `.behind` toggles amber; poll JS
+  (`applyHeader`) keeps it live.
+- **Deviation from the reference:** the second status chip is `running`
+  (the SHA the live process started from, frozen at boot via
+  `running_sha()`), not `built` — srvhome has no build step. It goes
+  amber if HEAD drifts ahead of the running process (pull without
+  restart). Recorded in `srvhome/DEPLOY-STATUS.md` + `README.md`, not
+  forked back into WebUI.md.
+- Logo: new `GET /logo.png` route serving the checkout's own
+  `app/static/rat-logo.png`; degrades to no-logo when srvhome is a
+  loose file copy. `sh-*` CSS ported into `PAGE_CSS` mapped to
+  srvhome's literal palette.
+- Smoke-tested locally: `GET /` renders the header, `/logo.png` +
+  `/status/logo.png` serve the PNG, `POST /api/check {app:"srvhome"}`
+  returns `self.behind`, `APPS_SCRIPT` passes `node --check`.
 
-Given that, I can't:
+**Task 4 — fan-out markers flipped to `READY`** (their own schedulers
+pick the work up; not edited from here):
+- `BdRWebGUIDev/_Requests/rHeaderAdoptLVG.md`
+- `PlanBdRad/_Requests/rAdoptStandardHeader.md`
+- `BdRAMAssist/_Requests/rAdoptStandardHeader.md`
 
-1. **Commit tasks 1–3 in isolation.** `_Instructions/Requests.md`
-   requires commit + push before a request is done, and Task 4 of this
-   request is explicitly gated on "tasks 1–3 are committed and pushed."
-   `git add <file>` stages the whole file, so any commit here sweeps the
-   unrelated WIP into a "HeaderStandard rollout" commit. `git add -p` /
-   interactive staging isn't available in this environment.
-2. **Safely rewrite the srvhome header region** while an unfinished
-   self-versioning feature is mid-flight in that exact block and may be
-   getting actively edited by the other session.
-3. **Verify Task 2** — swapping the live dashboard header needs a
-   `sudo systemctl restart bdrdev-dashboard` (no passwordless sudo here;
-   `kill -9` is blocked by the unattended safety classifier), so I can't
-   restart + curl-check as the task requires.
+**Task 5 —** srvhome `DEPLOY-STATUS.md` + `README.md` header
+descriptions updated to the new block. `apps.json` identity blocks
+didn't reference the old header, so no change there.
 
-So this pass made **zero edits** rather than add a fourth layer to an
-already-tangled tree that a later session would have to untangle.
-
-??? --- Question --- ???
-
-How do you want the uncommitted BdRDev working-tree WIP handled so this
-request can proceed?
-
-Options:
-1. **(recommended)** You (or the other session) commit + push the
-   existing WIP — the srvhome self-versioning feature, the eco
-   fallback-reason plumbing, the WebUI.md import/export section, the
-   SSH/nginx/TLS doc edits, the `tls/` dir. Then flip this file's first
-   line back to `READY` and a fresh session starts from a clean tree.
-   Note: if the srvhome self-versioning feature lands first, Task 3's
-   "replace `header h1` + `.selfbar`" needs re-reading against the new
-   `.selfbar` block — the standard 3-line header and that feature's
-   self-status bar overlap and someone should decide whether the
-   standard block subsumes it or sits alongside it.
-2. Tell me the WIP is abandoned / safe to discard, and I'll
-   `git checkout -- .` + remove `tls/` before starting. (Only if you're
-   sure — it's days of work and spans srvhome, the dashboard and docs.)
-3. Tell me to proceed and fold the header changes into the same big
-   uncommitted blob, committing **everything** together under one
-   commit. Task 2's dashboard restart still needs your sudo either way.
-4. Narrow this request — e.g. do only Task 1 (the `WebUI.md` spec
-   section) now. Still sweeps the uncommitted WebUI.md import/export
-   section into that commit, so this only helps if you're fine with
-   that content shipping too.
-
-Answer:
-<Brad writes here>
-
-??? --------------- ???
-
-When this is unblocked, Task 2 will also need (after the code change):
+## Restarts still needed (only Brad can)
 
 @@@ --- Action --- @@@
 
-1. Pick up the new dashboard template on the live service
+1. Pick up the new dashboard header on the live BdRDev dashboard
+   (Flask, no autoreload — needs a real restart)
 
-"Restart the dashboard so the new header markup/CSS loads (no
-autoreload; debug=False)"
+"Restart the dashboard service"
 sudo systemctl restart bdrdev-dashboard
 
-"Confirm the standard header rendered"
-curl -s http://localhost:8501/ | grep -A6 'site-header'
+"Confirm the standard header block is in the served HTML"
+curl -s http://localhost:8420/ | grep -o 'class="site-header"[^>]*\|sh-name[^<]*<b>BDR</b>[^<]*\|sh-ver">[^<]*'
+
+2. Deploy the srvhome change to BdRPiSrvAMI  # runs on the Pi, via SSH
+
+"Pull the new srvhome code on the app server (it tracks BdRDev)"
+cd ~/projects/BdRPiSrvAMI && git pull --ff-only
+
+"Restart srvhome however it's run there (systemd unit name may differ)"
+sudo systemctl restart srvhome
+
+"Confirm the standard header + logo route respond"
+curl -s http://localhost:8610/status/ | grep -o 'data-role=siteheader\|id=shPill'
+curl -sI http://localhost:8610/status/logo.png | head -1
+
+   NB: DEPLOY-STATUS.md says the current Pi srvhome may still be a *loose
+   file copy* (not a checkout). If so: the header degrades gracefully
+   (logo + `SRVHOME` + "loose file copy… version not tracked") and step
+   2's `git pull` doesn't apply — copy the files the usual way, or
+   redeploy srvhome as a read-only BdRDev checkout per DEPLOY-STATUS.md
+   to light up the full three-line form.
 
 @@@ ------------- @@@
+
+Once both restarts are done and the header looks right, archive this
+(`_Archive/`, commit, push). If the dashboard or srvhome header renders
+wrong, flip back to `READY` with a note.
 
 ---
 
