@@ -1,5 +1,6 @@
 {
   "server": "BdRPiSrvAMI",
+  "display_name": "bdr AMI",
   "bind_host": "127.0.0.1",
   "bind_port": 8610,
   "history_limit": 40

@@ -96,7 +96,8 @@ def checkables() -> list[dict]:
 # --------------------------------------------------------------------------
 
 def load_conf() -> dict:
-    conf = {"server": os.uname().nodename, "bind_host": "127.0.0.1",
+    conf = {"server": os.uname().nodename, "display_name": "",
+            "bind_host": "127.0.0.1",
             "bind_port": 8610, "history_limit": 40,
             "chat_enabled": True, "chat_extra_args": [],
             "chat_timeout_s": 180, "chat_max_prompt": 4000}
@@ -691,7 +692,8 @@ def full_state() -> dict:
         "chat_enabled": bool(conf.get("chat_enabled", True))
         and bool(CLAUDE_BIN and os.path.exists(CLAUDE_BIN)),
         "info": server_info(),
-        "self": self_state(limit),
+        "self": {**self_state(limit),
+                 "display_name": conf.get("display_name") or ""},
         "apps": [app_state(a, limit) for a in apps],
     }
 
@@ -1207,6 +1209,19 @@ def render_statusbox(app: dict) -> str:
     )
 
 
+def _sh_name_html(display: str) -> str:
+    """App-name line per WebUI.md: UPPERCASED, the first word in --text
+    (white, <b>), the rest muted blue-grey. `display` comes from
+    srvhome.conf.json's `display_name` (e.g. "bdr AMI" -> "BDR AMI");
+    empty falls back to the generic SRVHOME wordmark."""
+    parts = (display or "").upper().split(None, 1)
+    if not parts:
+        return "<b>SRV</b>HOME"
+    if len(parts) == 1:
+        return f"<b>{html.escape(parts[0])}</b>"
+    return f"<b>{html.escape(parts[0])}</b> {html.escape(parts[1])}"
+
+
 def render_site_header(s: dict) -> str:
     """The fleet standard header block (WebUI.md "Standard header
     block"): 64px logo + stacked app-name / version / deploy-status.
@@ -1216,7 +1231,7 @@ def render_site_header(s: dict) -> str:
     isn't run from a checkout."""
     logo = ('<img class=sh-logo src="logo.png" alt="">'
             if os.path.isfile(LOGO_PATH) else "")
-    name = "<span class=sh-name><b>SRV</b>HOME</span>"
+    name = f"<span class=sh-name>{_sh_name_html(s.get('display_name'))}</span>"
 
     if not s["present"] or not s.get("has_commits"):
         why = ("loose file copy on this box, version not tracked"

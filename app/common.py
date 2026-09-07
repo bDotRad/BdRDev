@@ -247,7 +247,7 @@ DEFAULT_ECOSYSTEM = {
          "runs_on": "BdRPiSrvAMI", "local_url": "https://planbdrad.local",
          "ts_url": "https://bdrpisrvami.tail0ed3f6.ts.net:8443",
          "database": "Supabase", "status": "building"},
-        {"name": "srvhome", "nickname": "", "exists": True,
+        {"name": "BdRAMI", "nickname": "bdr AMI", "exists": True,
          "roles": [],
          "runs_on": "BdRPiSrvAMI", "local_url": "https://bdrpiami.local",
          "ts_url": "https://bdrpisrvami.tail0ed3f6.ts.net",

@@ -10,9 +10,15 @@ it (clone over HTTPS via the box's `gh` PAT — no separate deploy key
 needed after all). The standard header block at
 `https://bdrpisrvami.local/` now renders in **full three-line form**:
 logo (`/logo.png` → 200, served from the checkout's
-`app/static/rat-logo.png`), `SRVHOME`, version line
+`app/static/rat-logo.png`), the app-name line, version line
 `2026.09.07_1632 · 5288529`, and the `up to date` pill + `HEAD` /
 `running` SHA chips.
+
+The app-name line is driven by `srvhome.conf.json`'s new `display_name`
+key (`"bdr AMI"` → **BDR AMI**), so the header matches the fleet
+ecosystem row (`BdRAMI` / "bdr AMI") rather than the app's internal
+name. Unset → falls back to the generic `SRVHOME` wordmark. Code, dir,
+DB, port stay `srvhome` — it's still the generic per-server app.
 
 What was done on the Pi:
 

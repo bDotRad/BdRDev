@@ -87,8 +87,10 @@ When srvhome runs from a git checkout (the intended deploy: a read-only
 **its own version** as one more thing to check — keyed `"srvhome"`:
 
 - the fleet **standard header block** at the top of the page
-  (`render_site_header`, see `_Instructions/WebUI.md`) — logo + `SRVHOME`
-  + version line (`YYYY.MM.DD_HHMM · <sha>`) + a deploy-status line whose
+  (`render_site_header`, see `_Instructions/WebUI.md`) — logo + the
+  app-name line (`srvhome.conf.json`'s `display_name`, uppercased —
+  `"bdr AMI"` → **BDR AMI** on the AMI Pi; falls back to `SRVHOME` when
+  unset) + version line (`YYYY.MM.DD_HHMM · <sha>`) + a deploy-status line whose
   `up to date` / `behind by N` pill re-checks GitHub, with `HEAD` +
   `running` SHA chips (the logo is served from the checkout's own
   `app/static/rat-logo.png` via the `/logo.png` route);
@@ -117,7 +119,7 @@ commit`.
 | `store.py` | SQLite schema + helpers for `deploys` |
 | `record_deploy.py` | records a repo's HEAD into the DB (hook + `--backfill`) |
 | `apps.json` | which apps this server hosts (`name` + repo `path`) |
-| `srvhome.conf.json` | server display name, bind host/port, history limit |
+| `srvhome.conf.json` | `server`, header `display_name`, bind host/port, history limit |
 | `hooks/post-merge` | the git hook `install.sh` copies into each app repo |
 | `install.sh` | back-fill + install hooks + crontab keepalive (no sudo) |
 | `run.sh` | idempotent starter used by the crontab |
