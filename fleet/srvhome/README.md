@@ -86,8 +86,12 @@ When srvhome runs from a git checkout (the intended deploy: a read-only
 `bDotRad/BdRDev` clone, run from `fleet/srvhome/` within it), it treats
 **its own version** as one more thing to check — keyed `"srvhome"`:
 
-- a status line under the page title (`render_selfbar`) — dot + `HEAD` +
-  `branch` + last-checked age;
+- the fleet **standard header block** at the top of the page
+  (`render_site_header`, see `_Instructions/WebUI.md`) — logo + `SRVHOME`
+  + version line (`YYYY.MM.DD_HHMM · <sha>`) + a deploy-status line whose
+  `up to date` / `behind by N` pill re-checks GitHub, with `HEAD` +
+  `running` SHA chips (the logo is served from the checkout's own
+  `app/static/rat-logo.png` via the `/logo.png` route);
 - a `srvhome` sub-tile in the **Updates** card (`render_self_updates`) —
   the same status box + **Check GitHub** / **Pull (N)** + deploy history
   an app tile gets. `state["self"]` in `/api/state`, `self_state()`.

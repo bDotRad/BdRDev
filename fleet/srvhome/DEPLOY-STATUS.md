@@ -5,14 +5,20 @@ Built for request `rEach server running apps`. First target: the Pi.
 ## srvhome self-version panel — 2026-09-06 — NEEDS RE-DEPLOY AS A CHECKOUT
 
 srvhome now tracks **its own version** the same way it tracks a hosted
-app: a status line under the page title (`up to date · HEAD abc1234 ·
-branch master · GitHub checked 3m ago`) and, in the **Updates** card, a
+app: the fleet **standard header block** (`_Instructions/WebUI.md`) at
+the top of the page, full three-line form — logo + `SRVHOME` + a
+version line (`2026.09.07_1358 · abc1234`) + a deploy-status line whose
+`up to date` / `behind by N` pill *is* the "re-check GitHub" button,
+with `HEAD` and `running` SHA chips (srvhome has no build step, so the
+second chip is the SHA the live process started from — it goes amber if
+someone pulls without restarting). Also, in the **Updates** card, a
 `srvhome` sub-tile with a status box, **Check GitHub** / **Pull (N)**
 buttons and its own deploy history. `Pull` does `git pull --ff-only`
 then re-execs the process (no build step). Keyed `"srvhome"` in
 `srvhome.db`; the background checker and the "check all" button now
-include it. Code: `self_state()`, `self_app()`, `render_selfbar()`,
-`render_self_updates()`, `_self_pull()`, `_schedule_self_restart()` in
+include it. Code: `self_state()`, `self_app()`, `render_site_header()`,
+`render_self_updates()`, `_self_pull()`, `_schedule_self_restart()`,
+`running_sha()`, the `/logo.png` route in
 `srvhome.py`; `--path` filter in `record_deploy.py`; `SRVHOME_APP_NAME`
 / `SRVHOME_APP_PATH` in `hooks/post-merge`; self-hook block in
 `install.sh`.

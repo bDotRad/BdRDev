@@ -38,6 +38,11 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# srvhome.py always lives at <repo>/fleet/srvhome/ inside a BdRDev
+# checkout; the fleet standard-header logo is the dashboard's own asset.
+# Missing (loose file copy, no checkout) -> the header just omits it.
+LOGO_PATH = os.path.normpath(
+    os.path.join(HERE, "..", "..", "app", "static", "rat-logo.png"))
 DB_PATH = os.path.join(HERE, "srvhome.db")
 APPS_JSON = os.path.join(HERE, "apps.json")
 CONF_JSON = os.path.join(HERE, "srvhome.conf.json")
@@ -144,6 +149,19 @@ def _git(path: str, *args: str) -> str:
         return out.stdout.strip() if out.returncode == 0 else ""
     except (OSError, subprocess.SubprocessError):
         return ""
+
+
+_RUNNING_SHA: str | None = None
+
+
+def running_sha() -> str:
+    """The 7-char SHA this srvhome *process* was started from — frozen at
+    first call (module load / after a self-restart), so it can diverge
+    from HEAD if someone pulls without restarting."""
+    global _RUNNING_SHA
+    if _RUNNING_SHA is None:
+        _RUNNING_SHA = _git(HERE, "rev-parse", "--short=7", "HEAD") or ""
+    return _RUNNING_SHA
 
 
 def _human_secs(s: float) -> str:
@@ -629,6 +647,8 @@ def self_state(history_limit: int) -> dict:
 
     head_sha = _git(path, "rev-parse", "--short=7", "HEAD") if present else ""
     head_subject = _git(path, "log", "-1", "--format=%s") if present else ""
+    head_date = (_git(path, "log", "-1", "--format=%cd",
+                      "--date=format-local:%Y.%m.%d_%H%M") if present else "")
     branch = _git(path, "rev-parse", "--abbrev-ref", "HEAD") if present else ""
 
     con = connect(DB_PATH)
@@ -648,6 +668,8 @@ def self_state(history_limit: int) -> dict:
         "branch": branch,
         "head_sha": head_sha,
         "head_subject": head_subject,
+        "head_date": head_date,
+        "running_sha": running_sha(),
         "deployed_sha": (latest or {}).get("sha", "") or head_sha,
         "deployed_at": (latest or {}).get("recorded_at", ""),
         "running": None,
@@ -771,17 +793,29 @@ body{margin:0;background:#0f1216;color:#d7dde3;
      font:15px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 a{color:#6cb6ff}
 header{padding:22px 28px;border-bottom:1px solid #232a31;background:#12171d}
-header h1{margin:0;font-size:19px;letter-spacing:.3px}
-header .selfbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-                margin-top:6px;font-size:12.5px;color:#c2cbd4}
-header .selfbar .dot{width:8px;height:8px;border-radius:50%;background:#8b96a1;flex:none}
-header .selfbar.s-ok .dot{background:#3fb950}
-header .selfbar.s-behind .dot{background:#e3b341}
-header .selfbar.s-busy .dot{background:#6cb6ff}
-header .selfbar.s-fail .dot{background:#f85149}
-header .selfbar .selfmeta{color:#8b96a1;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-header .selfbar .sha{color:#e2c08d;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-header .sub{color:#8b96a1;font-size:13px;margin-top:4px}
+/* fleet standard header block (BdRDev/_Instructions/WebUI.md), full
+   three-line form -- srvhome has a running-vs-origin check so it shows
+   the deploy-status line. Palette mapped to srvhome's literal colours. */
+header .site-header{display:flex;align-items:center;gap:16px}
+header .sh-logo{width:64px;height:64px;border-radius:50%;object-fit:cover;flex:none}
+header .sh-stack{display:flex;flex-direction:column;gap:4px;min-width:0}
+header .sh-name{font-weight:800;font-size:28px;line-height:1;letter-spacing:.04em;color:#7f97b8}
+header .sh-name b{color:#e8edf2;font-weight:800}
+header .sh-ver{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+               font-size:14px;color:#c7d0dc;margin-left:2px}
+header .site-header.behind .sh-ver{color:#e3b341}
+header .sh-status{display:flex;align-items:center;gap:8px;margin-left:2px;flex-wrap:wrap}
+header .sh-pill{font:inherit;font-size:11px;font-weight:700;line-height:1.4;cursor:pointer;
+               border:none;border-radius:5px;padding:1px 8px;color:#0f1115;background:#3fb950}
+header .sh-pill.busy{background:#e3b341;cursor:default}
+header .sh-pill:hover{filter:brightness(1.08)}
+header .site-header.behind .sh-pill{background:#e3b341}
+header .sh-chip{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+               color:#8b96a1;border:1px solid #232a31;border-radius:5px;padding:1px 7px}
+header .sh-chip b{font-weight:700;color:#3fb950}
+header .site-header.behind .sh-chip b{color:#e3b341}
+header .sh-status .s-none{color:#8b96a1;font-size:12px}
+header .sub{color:#8b96a1;font-size:13px;margin-top:8px}
 main{padding:24px 28px;max-width:1100px;margin:0 auto}
 h2.sec{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#8b96a1;
        margin:34px 0 12px;border-bottom:1px solid #202730;padding-bottom:6px}
@@ -1173,29 +1207,53 @@ def render_statusbox(app: dict) -> str:
     )
 
 
-def render_selfbar(s: dict) -> str:
-    """The one-line version strip under the page title: srvhome's own
-    status dot + HEAD + branch + last-checked age."""
-    if not s["present"]:
-        return ("<div class='selfbar s-none' data-role=selfbar>"
-                "<span class=dot></span><span data-role=selfstatus>"
-                "srvhome — loose file copy on this box, version not tracked"
-                "</span></div>")
-    _tile, bcls, btext = status_badge(s)
-    skind = bcls or "none"
-    bits: list[str] = []
-    if s.get("head_sha"):
-        bits.append(f"HEAD <span class=sha>{html.escape(s['head_sha'])}</span>")
-    if s.get("branch"):
-        bits.append(f"branch {html.escape(s['branch'])}")
-    if s.get("last_checked"):
-        bits.append(f"GitHub checked {html.escape(_rel_age(s['last_checked']))}")
-    meta = f"<span class=selfmeta>{' · '.join(bits)}</span>" if bits else ""
+def render_site_header(s: dict) -> str:
+    """The fleet standard header block (WebUI.md "Standard header
+    block"): 64px logo + stacked app-name / version / deploy-status.
+    srvhome renders the full three-line form -- it has a
+    running-vs-origin check -- with the version-pill doubling as the
+    "re-check GitHub" button. Degrades to name + version when srvhome
+    isn't run from a checkout."""
+    logo = ('<img class=sh-logo src="logo.png" alt="">'
+            if os.path.isfile(LOGO_PATH) else "")
+    name = "<span class=sh-name><b>SRV</b>HOME</span>"
+
+    if not s["present"] or not s.get("has_commits"):
+        why = ("loose file copy on this box, version not tracked"
+               if not s["present"] else "repo present but empty")
+        return (
+            f"<div class='site-header' data-role=siteheader>{logo}"
+            f"<div class=sh-stack>{name}"
+            f"<span class=sh-ver>—</span>"
+            f"<div class=sh-status><span class=s-none>srvhome — {why}</span>"
+            f"</div></div></div>")
+
+    behind = s.get("behind")
+    head = s.get("head_sha", "")
+    run = s.get("running_sha") or head
+    drift = bool(run and head and run != head)
+    is_behind = bool(behind) or drift or bool(s.get("check_error"))
+    ver = " · ".join(x for x in (s.get("head_date", ""), head) if x) or head
+    if s.get("updating"):
+        pill = "checking…"
+    elif s.get("check_error"):
+        pill = "check failed"
+    elif behind is None:
+        pill = "check GitHub"
+    elif behind > 0:
+        pill = f"behind by {behind}"
+    else:
+        pill = "up to date"
     return (
-        f"<div class='selfbar s-{skind}' data-role=selfbar>"
-        f"<span class=dot></span>"
-        f"<span data-role=selfstatus>{html.escape(btext)}</span>{meta}</div>"
-    )
+        f"<div class='site-header{' behind' if is_behind else ''}' data-role=siteheader>"
+        f"{logo}<div class=sh-stack>{name}"
+        f"<span class=sh-ver>{html.escape(ver)}</span>"
+        f"<div class=sh-status>"
+        f"<button class=sh-pill id=shPill data-act=selfcheck "
+        f"title='Re-check GitHub'>{html.escape(pill)}</button>"
+        f"<span class=sh-chip>HEAD <b data-role=sh-head>{html.escape(head)}</b></span>"
+        f"<span class=sh-chip>running <b data-role=sh-run>{html.escape(run)}</b></span>"
+        f"</div></div></div>")
 
 
 def render_self_updates(s: dict) -> str:
@@ -1323,7 +1381,25 @@ APPS_SCRIPT = r"""
     }
     return b.join(' · ');
   }
+  function applyHeader(s){
+    var sh=document.querySelector('[data-role=siteheader]');
+    if(!sh || !s) return;
+    var beh=s.behind;
+    var drift=!!(s.running_sha && s.head_sha && s.running_sha!==s.head_sha);
+    sh.classList.toggle('behind', !!beh || drift || !!s.check_error);
+    var pill=sh.querySelector('#shPill');
+    if(pill && !pill.classList.contains('busy'))
+      pill.textContent = s.updating ? 'checking…'
+                       : s.check_error ? 'check failed'
+                       : (beh===null||beh===undefined) ? 'check GitHub'
+                       : (beh>0 ? 'behind by '+beh : 'up to date');
+    var hd=sh.querySelector('[data-role=sh-head]');
+    if(hd && s.head_sha) hd.textContent=s.head_sha;
+    var rn=sh.querySelector('[data-role=sh-run]');
+    if(rn && s.running_sha) rn.textContent=s.running_sha;
+  }
   function apply(state){
+    applyHeader(state.self);
     var all=(state.apps||[]).slice();
     if(state.self && state.self.present) all.push(state.self);
     all.forEach(function(app){
@@ -1365,6 +1441,13 @@ APPS_SCRIPT = r"""
       btn.disabled=true; btn.textContent='checking…';
       post('api/check').then(function(){ return refresh(); })
         .finally(function(){ btn.disabled=false; btn.textContent='check GitHub — all apps + srvhome'; });
+      return;
+    }
+    if(btn.id==='shPill'){
+      if(btn.classList.contains('busy')) return;
+      btn.classList.add('busy'); btn.textContent='checking…';
+      post('api/check',{app:'srvhome'}).then(function(){ return refresh(); })
+        .finally(function(){ btn.classList.remove('busy'); });
       return;
     }
     var tile=btn.closest('.tile[data-app]'); if(!tile) return;
@@ -1439,9 +1522,9 @@ def render_html(state: dict) -> str:
         f"<title>{e(state['server'])} — server dashboard</title>",
         f"<style>{PAGE_CSS}</style></head><body>",
         "<header>",
-        f"<h1>{e(state['server'])} — server dashboard</h1>",
-        render_selfbar(state["self"]),
-        f"<div class=sub>Hardware, stack, hosted apps and deploy history. "
+        render_site_header(state["self"]),
+        f"<div class=sub>{e(state['server'])} — hardware, stack, hosted apps "
+        f"and deploy history. "
         f"Generated {e(_fmt_ts(state['generated_at'], tz=True))}.</div>",
         "</header><main>",
         render_server_panel(state["info"], state["self"]),
@@ -1490,6 +1573,12 @@ class Handler(BaseHTTPRequestHandler):
                        "application/json")
         elif path in ("/healthz", "/health"):
             self._send(200, b"ok\n", "text/plain")
+        elif path == "/logo.png":
+            try:
+                with open(LOGO_PATH, "rb") as fh:
+                    self._send(200, fh.read(), "image/png")
+            except OSError:
+                self._send(404, b"not found\n", "text/plain")
         else:
             self._send(404, b"not found\n", "text/plain")
 
@@ -1576,6 +1665,7 @@ def main() -> None:
     host = conf.get("bind_host", "127.0.0.1")
     port = int(conf.get("bind_port", 8610))
     connect(DB_PATH).close()
+    running_sha()  # freeze the running-code SHA at process start
     start_checker()
     httpd = ThreadingHTTPServer((host, port), Handler)
     print(f"srvhome listening on http://{host}:{port}  (db: {DB_PATH})",

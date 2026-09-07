@@ -9,13 +9,138 @@ rules apply.
 
 ## Versioning
 
-- Every app shows its **version** as the **7-character short commit SHA**
-  of the deployed checkout, rendered small and un-emphasised directly
-  **under the page title / in the footer**. No separate version strings,
-  tags, or `VERSION` files — the SHA is the version.
+- The **version** of a running app is the **7-character short commit
+  SHA** of its deployed checkout. That SHA is the canonical version
+  identifier — no separate version strings, tags, or `VERSION` files.
+- **How it's displayed:**
+  - Where an app renders the [standard header block](#standard-header-block),
+    the version line shows the SHA prefixed with the local build
+    timestamp: `YYYY.MM.DD_HHMM · <7-char-SHA>` — build time, a ` · `
+    separator, then the 7-char SHA. It turns amber when the running
+    build is behind the repo.
+  - A **footer** version line may stay SHA-only.
+  - Rendered small and un-emphasised either way.
 - Where an app records deploy history (e.g. `srvhome`), a "version" in
   that history is the same 7-char SHA, shown with the deploy timestamp,
   commit title and commit description.
+
+## Standard header block
+
+Every web app on the fleet renders the same header: a big circular B&W
+logo on the left, then a stacked block of app name + version (+ an
+optional deploy-status line). This is the `LV-G` variant — the seven
+combined logo/name/version explorations that led to it live on the
+**BdRWebGUIDev showcase → Templates → Logo & Version** (`#t2-logover`);
+`LV-G` is the one Brad picked. The **BdRDev dashboard** header
+(`app/templates/index.html`, `.site-header`) is the reference
+implementation of the degraded (two-line) form; **`srvhome`**
+(`fleet/srvhome/srvhome.py`, `render_site_header`) is the reference for
+the full three-line form.
+
+Nothing is shared as code between projects (see [`Standards.md`](Standards.md)):
+each app ports the markup + CSS below against its own palette vars, its
+own logo asset and its own `version` wiring. When the header needs to
+change fleet-wide, edit this section and re-run a rollout.
+
+### The three lines
+
+1. **App name** — the app's short / nick name, UPPERCASED, letter-spaced,
+   bold ~28px. The **first word** is in `--text` (white); the rest is
+   muted blue-grey `#7f97b8`. E.g. `BDR WEB GUI DEV`, `BDR AI GUI`.
+2. **Version line** — monospace ~14px, `#c7d0dc` (white-grey), format
+   `YYYY.MM.DD_HHMM · <7-char-SHA>` (local build timestamp · 7-char
+   short commit SHA). Turns amber (`--pending`) when the running build
+   is behind the repo.
+3. **Deploy-status line** (indented under the version) — **only where the
+   app has a running-vs-origin version check** (see graceful degradation
+   below). A pill (`up to date` green / `behind by N` amber) that *is*
+   the "re-check GitHub" button, followed by two mono chips `HEAD <sha>`
+   and `built <sha>` — green when the two SHAs match, amber when they
+   don't.
+
+### Reference markup
+
+```html
+<div class="site-header" id="siteHeader">
+  <img class="sh-logo" src="/static/rat-logo.png" alt="">
+  <div class="sh-stack">
+    <span class="sh-name"><b>BDR</b> AI GUI</span>
+    <span class="sh-ver">2026.09.07_0923 · 0ab1809</span>
+    <!-- status line: omit this div entirely if the app has no version check -->
+    <div class="sh-status">
+      <button class="sh-pill" id="shPill" title="Re-check GitHub">up&nbsp;to&nbsp;date</button>
+      <span class="sh-chip">HEAD <b>0ab1809</b></span>
+      <span class="sh-chip">built <b>0ab1809</b></span>
+    </div>
+  </div>
+</div>
+```
+
+### Reference CSS
+
+Palette vars are already fleet-standard (`--text`, `--text-dim`,
+`--card-border`, plus `--good`/`--pending` — map to whatever the app
+calls its green/amber, e.g. the BdRDev dashboard's
+`--processing`/`--waiting`). SPA apps may use their utility classes
+instead of this CSS verbatim — record that deviation in the app's own
+docs, don't fork it back here.
+
+```css
+.site-header { display: flex; align-items: center; gap: 16px; }
+.sh-logo { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.sh-stack { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sh-name {
+  font-weight: 800; font-size: 28px; line-height: 1; letter-spacing: 0.04em;
+  color: #7f97b8;
+}
+.sh-name b { color: var(--text); font-weight: 800; }
+.sh-ver {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px; color: #c7d0dc; margin-left: 2px;
+}
+.site-header.behind .sh-ver { color: var(--pending); }
+.sh-status { display: flex; align-items: center; gap: 8px; margin-left: 4px; flex-wrap: wrap; }
+.sh-pill {
+  font: inherit; font-size: 11px; font-weight: 700; line-height: 1.4;
+  cursor: pointer; border: none; border-radius: 5px; padding: 1px 8px;
+  color: #0f1115; background: var(--good);
+}
+.sh-pill.busy { background: var(--pending); cursor: default; }
+.sh-pill:hover { filter: brightness(1.08); }
+.site-header.behind .sh-pill { background: var(--pending); }
+.sh-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px; color: var(--text-dim);
+  border: 1px solid var(--card-border); border-radius: 5px; padding: 1px 7px;
+}
+.sh-chip b { font-weight: 700; color: var(--good); }
+.site-header.behind .sh-chip b { color: var(--pending); }
+```
+
+### Status-pill behaviour
+
+Clicking `.sh-pill` re-runs the app's own "compare running SHA to
+origin" check, then: add / remove `.behind` on `.site-header`, set the
+pill text to `up to date` / `behind by N`, and update the `HEAD` chip's
+SHA. While the check is in flight give the pill `.busy` and text
+`checking…`. `srvhome` (`fleet/srvhome/srvhome.py`) already does this
+comparison server-side (`check_one()` / `app_state()`) — reuse that
+pattern rather than inventing a new endpoint.
+
+### Graceful degradation
+
+The deploy-status line couples the header to srvhome-style
+version-checking, which not every app has. So:
+
+- Apps **with** a running-vs-origin check (`srvhome`; any app that adds
+  one): render all three lines.
+- Apps **without** one (BdRDev dashboard, BdRWebGUIDev, BdRAMAssist
+  today): render **logo + name + version only** — drop the `.sh-status`
+  div entirely. The version line still goes amber if the app has any
+  other way to know it's behind; otherwise it stays white-grey.
+
+Building the check into an app that lacks one is a per-app follow-up,
+not part of adopting the header.
 
 ## Editing tables — the standard pattern
 

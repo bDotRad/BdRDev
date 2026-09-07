@@ -1442,17 +1442,20 @@ _APP_VERSION_CACHE = None
 
 
 def app_version():
-    """Version string for this app's own running code: the current
-    commit's date/time (yymmdd_hhmmss, local) plus its short hash. Since
-    Flask runs with no autoreload, this is stable for the life of the
-    process -- computed once and cached."""
+    """Version string for this app's own running code, in the fleet
+    standard-header display format: `YYYY.MM.DD_HHMM · <7-char-SHA>`
+    (HEAD commit's local date/time · its 7-char short hash — see
+    _Instructions/WebUI.md "Versioning"). Since Flask runs with no
+    autoreload this is stable for the life of the process -- computed
+    once and cached."""
     global _APP_VERSION_CACHE
     if _APP_VERSION_CACHE is not None:
         return _APP_VERSION_CACHE
     repo_dir = APP_DIR.parent
     try:
         out = subprocess.run(
-            ["git", "log", "-1", "--format=%cd %h", "--date=format-local:%y%m%d_%H%M%S"],
+            ["git", "log", "-1", "--abbrev=7", "--format=%cd · %h",
+             "--date=format-local:%Y.%m.%d_%H%M"],
             cwd=repo_dir, capture_output=True, text=True, timeout=3,
         )
         version = out.stdout.strip() if out.returncode == 0 else ""

@@ -43,22 +43,22 @@
     color: var(--text);
     padding: 24px;
   }
-  #header-row { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
-  #site-logo {
-    width: 48px;
-    height: 48px;
-    object-fit: cover;
-    border-radius: 0;
-    flex-shrink: 0;
+  /* Standard header block (fleet _Instructions/WebUI.md) — degraded
+     form: logo + name + version only, since the dashboard has no
+     running-vs-origin version check. */
+  .site-header { display: flex; align-items: center; gap: 16px; margin-bottom: 4px; }
+  .sh-logo { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+  .sh-stack { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .sh-name {
+    font-weight: 800; font-size: 28px; line-height: 1; letter-spacing: 0.04em;
+    color: #7f97b8;
   }
-  #header-text { display: flex; flex-direction: column; }
-  #site-version {
-    font-size: 8px;
+  .sh-name b { color: var(--text); font-weight: 800; }
+  .sh-ver {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    color: #fff;
-    white-space: nowrap;
-    line-height: 1.3;
+    font-size: 14px; color: #c7d0dc; margin-left: 2px;
   }
+  .site-header.behind .sh-ver { color: var(--waiting); }
   h1 { font-size: 20px; font-weight: 600; margin: 0; color: var(--title-color); }
   h2 { font-size: 14px; font-weight: 600; margin: 0 0 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
   #banner {
@@ -658,11 +658,11 @@
 </style>
 </head>
 <body>
-  <div id="header-row">
-    <img id="site-logo" src="/static/rat-logo.png" alt="BdRDev">
-    <div id="header-text">
-      <h1>BdR AI GUI</h1>
-      <div id="site-version">{{ version }}</div>
+  <div class="site-header" id="siteHeader">
+    <img class="sh-logo" src="/static/rat-logo.png" alt="">
+    <div class="sh-stack">
+      <span class="sh-name"><b>BDR</b> AI GUI</span>
+      <span class="sh-ver">{{ version }}</span>
     </div>
   </div>
 
