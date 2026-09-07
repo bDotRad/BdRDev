@@ -1,8 +1,43 @@
-# srvhome on BdRPiSrvAMI — deploy status (updated 2026-09-06)
+# srvhome on BdRPiSrvAMI — deploy status (updated 2026-09-07)
 
 Built for request `rEach server running apps`. First target: the Pi.
 
-## srvhome self-version panel — 2026-09-06 — NEEDS RE-DEPLOY AS A CHECKOUT
+## Re-deployed as a BdRDev checkout — 2026-09-07 — DONE / live
+
+The Pi deploy is now a **full `bDotRad/BdRDev` checkout** at
+`~/projects/BdRPiAMI/BdRDev`, srvhome run from `fleet/srvhome/` inside
+it (clone over HTTPS via the box's `gh` PAT — no separate deploy key
+needed after all). The standard header block at
+`https://bdrpisrvami.local/` now renders in **full three-line form**:
+logo (`/logo.png` → 200, served from the checkout's
+`app/static/rat-logo.png`), `SRVHOME`, version line
+`2026.09.07_1632 · 5288529`, and the `up to date` pill + `HEAD` /
+`running` SHA chips.
+
+What was done on the Pi:
+
+```sh
+cd ~/projects/BdRPiAMI && git clone https://github.com/bDotRad/BdRDev.git BdRDev
+cp srvhome/srvhome.db BdRDev/fleet/srvhome/          # conf.json already correct in-repo
+cd BdRDev/fleet/srvhome && ./install.sh              # crontab keepalive -> new path,
+                                                    # self-hook, backfills
+pkill -f 'BdRPiAMI/srvhome/srvhome.py' && ./run.sh   # old loose copy -> new checkout
+mv ~/projects/BdRPiAMI/srvhome ~/projects/BdRPiAMI/_srvhome-loosecopy-retired-20260907
+```
+
+The retired loose copy is kept aside (not deleted) — safe for Brad to
+`rm -rf` once he's happy. Deploy path from here on: `git pull` in
+`~/projects/BdRPiAMI/BdRDev` (or the dashboard's **Pull** button); the
+per-minute `run.sh` cron keepalive points at
+`~/projects/BdRPiAMI/BdRDev/fleet/srvhome/run.sh`.
+
+**`install.sh` fix landed with this:** its per-app backfill loop ran
+under `set -e` with no guard, so `BdRImpSys` (a git repo with zero
+commits, listed in `apps.json`) aborted the whole installer before the
+self-hook / crontab steps. Now skips commit-less repos and tolerates a
+backfill failure, matching the self-backfill's existing `|| true`.
+
+## srvhome self-version panel — 2026-09-06 — SUPERSEDED by the entry above
 
 srvhome now tracks **its own version** the same way it tracks a hosted
 app: the fleet **standard header block** (`_Instructions/WebUI.md`) at

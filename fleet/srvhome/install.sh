@@ -31,8 +31,12 @@ PY
     echo "  ! $name: $path is not a git repo - skipping"
     continue
   fi
+  if ! git -C "$path" rev-parse --verify -q HEAD >/dev/null; then
+    echo "  ! $name: $path has no commits yet - skipping"
+    continue
+  fi
   echo "  - $name: backfilling last $BACKFILL_N commits"
-  python3 record_deploy.py --backfill "$name" "$path" "$BACKFILL_N"
+  python3 record_deploy.py --backfill "$name" "$path" "$BACKFILL_N" || true
 
   hook="$path/.git/hooks/post-merge"
   install -m 0755 hooks/post-merge "$hook"

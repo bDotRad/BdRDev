@@ -126,17 +126,21 @@ commit`.
 
 ## Deploy (on the Pi)
 
+srvhome runs from a full `bDotRad/BdRDev` checkout so it can
+version-check itself:
+
 ```bash
-mkdir -p ~/projects/BdRPiAMI/srvhome
-# copy these files there (rsync from the dev box, or git-archive), then:
-cd ~/projects/BdRPiAMI/srvhome
+cd ~/projects/BdRPiAMI
+git clone https://github.com/bDotRad/BdRDev.git BdRDev   # HTTPS via the box's gh PAT
+cp <old-copy>/srvhome.db BdRDev/fleet/srvhome/ 2>/dev/null || true   # keep deploy history
+cd BdRDev/fleet/srvhome
 ./install.sh
 curl -s http://127.0.0.1:8610/api/state | head
 ```
 
-Then, with sudo (Brad), add the nginx route from `nginx-snippet.conf`
-and reload — the page is then at **https://bdrpisrvami.local/status/**
-(the box's hostname is now `BdRPiSrvAMI`; `bdrpiami.local` is retired).
+nginx (sudo, Brad) proxies `/` → `127.0.0.1:8610` — the page is at
+**https://bdrpisrvami.local/**. Deploy updates from here on: `git pull`
+in `~/projects/BdRPiAMI/BdRDev` (or the dashboard **Pull** button).
 
 ## Adding another server later
 
