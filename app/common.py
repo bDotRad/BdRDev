@@ -140,8 +140,8 @@ def save_theme(overrides):
 # restarting. It's now data: read from self-hosted Supabase when configured
 # (app/fleet_db.py), cached to / fallen back on state/ecosystem.json. The
 # single Ecosystem tab renders two editable grids from it -- Servers and
-# Projects (a project carries its own deployment: runs_on / web_url /
-# database / status, plus a dev-agent role matrix). Dashboard-only -- the
+# Projects (a project carries its own deployment: runs_on / local_url /
+# ts_url / database / status, plus a dev-agent role matrix). Dashboard-only -- the
 # scheduler never reads it.
 #
 # DEFAULT_ECOSYSTEM is the seed written on first use; after that the DB (or
@@ -186,7 +186,7 @@ _PROJECT_STATUSES = ("planned", "building", "deployed", "live")
 DEFAULT_ECOSYSTEM = {
     "servers": [
         {
-            "name": "BdRPiSrvDev", "tag": "this host, local", "address": "10.10.8.11",
+            "name": "BdRPiSrvDev", "nickname": "", "tag": "this host, local", "address": "10.10.8.11",
             "tailscale": "100.116.147.74",
             "local_url": "https://bdrpisrvdev.local",
             "ts_url": "https://bdrpisrvdev.tail0ed3f6.ts.net",
@@ -200,16 +200,17 @@ DEFAULT_ECOSYSTEM = {
             ),
         },
         {
-            "name": "BdRPiSrvAMI", "tag": "Raspberry Pi 8GB", "address": "10.10.10.20",
+            "name": "BdRPiSrvAMI", "nickname": "", "tag": "Raspberry Pi 8GB", "address": "10.10.10.20",
             "tailscale": "100.86.25.88",
-            "local_url": "https://bdrpiami.local", "ts_url": "",
+            "local_url": "https://bdrpiami.local",
+            "ts_url": "https://bdrpisrvami.tail0ed3f6.ts.net",
             "host": "Raspberry Pi", "os": "Raspberry Pi", "ram": "8GB", "disk": "",
             "claude": True, "nginx": True, "supabase": True, "sqlite": False,
             "provisioned": True, "dev_host": False,
             "git": "GitHub\nPull from bDotRad/: BdRAMAssist, PlanBdRad, BdRIS",
         },
         {
-            "name": "BdRSrvDungeon", "tag": "not provisioned yet", "address": "",
+            "name": "BdRSrvDungeon", "nickname": "", "tag": "not provisioned yet", "address": "",
             "tailscale": "", "local_url": "", "ts_url": "",
             "host": "VM", "os": "Ubuntu Server", "ram": "4GB", "disk": "256GB SSD",
             "claude": True, "nginx": True, "supabase": True, "sqlite": False,
@@ -217,7 +218,7 @@ DEFAULT_ECOSYSTEM = {
             "git": "GitHub\nPull from bDotRad/: BdRDungeon",
         },
         {
-            "name": "BdRBirdDetector", "tag": "physical Pi, 192.168.1.187", "address": "192.168.1.187",
+            "name": "BdRBirdDetector", "nickname": "", "tag": "physical Pi, 192.168.1.187", "address": "192.168.1.187",
             "tailscale": "", "local_url": "http://bdrbirddetector.local", "ts_url": "",
             "host": "Raspberry Pi", "os": "RPI OS Lite", "ram": "4GB", "disk": "64GB SD Card",
             "claude": False, "nginx": True, "supabase": False, "sqlite": True,
@@ -226,45 +227,64 @@ DEFAULT_ECOSYSTEM = {
         },
     ],
     "projects": [
-        {"name": "BdRDev", "exists": True,
+        {"name": "BdRDev", "nickname": "", "exists": True,
          "roles": ["pm", "web", "db", "doco"],
-         "runs_on": "BdRVSrvDev", "web_url": "http://192.168.100.10:8420",
+         "runs_on": "BdRPiSrvDev", "local_url": "https://bdrpisrvdev.local",
+         "ts_url": "https://bdrpisrvdev.tail0ed3f6.ts.net",
          "database": "none", "status": "deployed"},
-        {"name": "BdRAMAssist", "exists": True,
+        {"name": "BdRWebGUIDev", "nickname": "", "exists": True,
          "roles": ["pm", "web", "db", "doco"],
-         "runs_on": "BdRPiSrvAMI", "web_url": "https://bdramassist.local",
+         "runs_on": "BdRPiSrvDev", "local_url": "http://bdrpisrvdev.local:8430",
+         "ts_url": "",
+         "database": "none", "status": "deployed"},
+        {"name": "BdRAMAssist", "nickname": "", "exists": True,
+         "roles": ["pm", "web", "db", "doco"],
+         "runs_on": "BdRPiSrvAMI", "local_url": "https://bdramassist.local",
+         "ts_url": "https://bdrpisrvami.tail0ed3f6.ts.net:8444",
          "database": "shares:PlanBdRad", "status": "building"},
-        {"name": "PlanBdRad", "exists": True,
+        {"name": "PlanBdRad", "nickname": "", "exists": True,
          "roles": ["pm", "web", "db"],
-         "runs_on": "BdRPiSrvAMI", "web_url": "https://planbdrad.local",
+         "runs_on": "BdRPiSrvAMI", "local_url": "https://planbdrad.local",
+         "ts_url": "https://bdrpisrvami.tail0ed3f6.ts.net:8443",
          "database": "Supabase", "status": "building"},
-        {"name": "BdRIS", "exists": False,
+        {"name": "srvhome", "nickname": "", "exists": True,
          "roles": [],
-         "runs_on": "", "web_url": "", "database": "none", "status": "planned"},
-        {"name": "BdRBirdDetector", "exists": True,
+         "runs_on": "BdRPiSrvAMI", "local_url": "https://bdrpiami.local",
+         "ts_url": "https://bdrpisrvami.tail0ed3f6.ts.net",
+         "database": "SQLite — deploy history (srvhome.db)", "status": "deployed"},
+        {"name": "BdRIS", "nickname": "", "exists": False,
+         "roles": [],
+         "runs_on": "", "local_url": "", "ts_url": "",
+         "database": "none", "status": "planned"},
+        {"name": "BdRBirdDetector", "nickname": "", "exists": True,
          "roles": ["pm", "web", "db", "elec_ctrl", "doco"],
-         "runs_on": "BdRBirdDetector", "web_url": "",
+         "runs_on": "BdRBirdDetector", "local_url": "http://bdrbirddetector.local",
+         "ts_url": "",
          "database": "SQLite", "status": "deployed"},
-        {"name": "BdRDungeon", "exists": True,
+        {"name": "BdRDungeon", "nickname": "", "exists": True,
          "roles": ["pm", "web", "db", "elec_ctrl", "doco"],
-         "runs_on": "BdRSrvDungeon", "web_url": "",
+         "runs_on": "BdRSrvDungeon", "local_url": "", "ts_url": "",
          "database": "Supabase", "status": "planned"},
     ],
     "notes": (
         "Not yet real, per current state: BdRSrvDungeon isn't provisioned yet. "
         "BdRPiSrvAMI (formerly the PlanBdRadServer VM; now a physical Raspberry Pi 8GB "
-        "at 10.10.10.20, on-box hostname / Tailscale node still 'bdrpiami') is real and "
-        "reachable. Its self-hosted Supabase stack is healthy, but as of 2026-08-29 "
+        "at 10.10.10.20, tailnet node 'bdrpisrvami', on-box hostname now 'BdRPiSrvAMI') "
+        "is real and reachable — LAN key SSH from this host (ssh BdRPiAMI) verified "
+        "2026-09-06. Its self-hosted Supabase stack is healthy, but as of 2026-08-29 "
         "neither PlanBdRad nor BdRAMAssist is deployed there yet — repos are cloned, "
         "but no build, no per-app nginx vhost, and no app schema in Postgres. The "
         "deploy docs in both repos were rewritten to target the Pi on 2026-08-29 "
         "(web layout: per-app *.local names, planbdrad.local / bdramassist.local); "
         "remaining steps are Brad's (node install, TLS cert regen, nginx sudo, schema "
         "apply) — see each repo's SERVER_SETUP.md / SQL_RUN.md. "
-        "This host (BdRVSrvDev, 192.168.100.10) is real; its machine hostname "
-        "is still BdRDev — the rename to the BdRVSrv… / BdRPiSrv… convention (VM vs "
-        "Raspberry Pi) is display-only in this data so far, not yet applied to the "
-        "actual hostname / SSH key names / systemd units. BdRIS "
+        "This host is real: a physical Raspberry Pi, machine hostname 'bdrpisrvdev', "
+        "LAN 10.10.8.11 (wlan0/DHCP), tailnet node 'bdrpisrvdev'. The earlier planned "
+        "'BdRSrvDev' VM-style rename never happened — the box became a Pi instead. SSH "
+        "key filenames still carry the 'bdrdev_' prefix; systemd units are still "
+        "bdrdev-dashboard / bdrdev-scheduler. Tailscale SSH between fleet boxes "
+        "currently needs an ACL change to work headless (tailnet policy 'ssh' rule is "
+        "on action:check) — LAN key SSH is unaffected. BdRIS "
         "doesn't exist as a project yet. BdRDev, BdRAMAssist, and BdRDungeon now have "
         "all the agents shown above for real, under .claude/agents/ (BdRDev's set is "
         "written generically so it doubles as the copyable template for other projects "
@@ -306,6 +326,9 @@ def _normalize_ecosystem(data):
             return any(n in low for n in needles)
         servers.append({
             "name": _eco_str(s.get("name")),
+            # Display label for the web pages -- lets a name carry spaces etc.
+            # Blank falls back to `name` at render time.
+            "nickname": _eco_str(s.get("nickname")),
             "tag": _eco_str(s.get("tag")),
             "address": _eco_str(s.get("address")),
             "tailscale": _eco_str(s.get("tailscale")),
@@ -336,7 +359,9 @@ def _normalize_ecosystem(data):
             if isinstance(roles, list) else []
 
         runs_on = _eco_str(p.get("runs_on"))
-        web_url = _eco_str(p.get("web_url"))
+        # local_url was web_url pre-2026-09; fall back so old caches migrate.
+        local_url = _eco_str(p.get("local_url") or p.get("web_url"))
+        ts_url = _eco_str(p.get("ts_url"))
         database = _eco_str(p.get("database"))
         status = _eco_str(p.get("status"))
         if status not in _PROJECT_STATUSES:
@@ -344,10 +369,14 @@ def _normalize_ecosystem(data):
 
         projects.append({
             "name": name,
+            # Display label for the web pages -- lets a name carry spaces etc.
+            # Blank falls back to `name` at render time.
+            "nickname": _eco_str(p.get("nickname")),
             "exists": bool(p.get("exists", True)),
             "roles": list(dict.fromkeys(roles)),
             "runs_on": runs_on,
-            "web_url": web_url,
+            "local_url": local_url,
+            "ts_url": ts_url,
             "database": database,
             "status": status,
         })

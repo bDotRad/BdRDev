@@ -26,11 +26,11 @@ Read path:
   back to state/ecosystem.json as a warm cache.
 
 Write path (push_ecosystem): upsert the base tables with the service key --
-  servers, server_software (the 4 tracked package links per server),
-  projects (incl. the folded-in deployment columns runs_on_server_id /
-  web_url / database / status), project_roles (the dev-agent role matrix),
-  fleet_meta -- and delete rows that are no longer in the payload. On
-  success state/ecosystem.json is updated too.
+  servers (incl. nickname), server_software (the 4 tracked package links
+  per server), projects (incl. nickname + the folded-in deployment columns
+  runs_on_server_id / local_url / ts_url / database / status), project_roles
+  (the role matrix), fleet_meta -- and delete rows that are no longer in the
+  payload. On success state/ecosystem.json is updated too.
 
   Requires the schema from supabase/DRAFT_fold_apps_into_projects.sql
   Parts A + B (the projects deployment columns, the roles / project_roles
@@ -213,6 +213,7 @@ def _write_all(data):
     # -- servers (upsert on name, sort_order from list position)
     server_rows = [{
         "name": s["name"],
+        "nickname": s.get("nickname", ""),
         "tag": s["tag"],
         "address": s["address"],
         "tailscale_ip": s.get("tailscale", ""),
@@ -266,9 +267,11 @@ def _write_all(data):
     for i, p in enumerate(projects):
         proj_rows.append({
             "name": p["name"],
+            "nickname": p.get("nickname", ""),
             "exists_flag": p["exists"],
             "runs_on_server_id": srv_id.get(p.get("runs_on") or ""),
-            "web_url": p.get("web_url", ""),
+            "local_url": p.get("local_url", ""),
+            "ts_url": p.get("ts_url", ""),
             "database": p.get("database", ""),
             "status": p.get("status") or "planned",
             "sort_order": i + 1,

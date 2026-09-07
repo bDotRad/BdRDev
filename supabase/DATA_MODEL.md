@@ -50,8 +50,8 @@ Merge `apps` into `projects`. A project carries its own deployment.
    │ ──────────────────── │   (nullable FK)       │ ──────────────────── │
    │ name · exists        │ ────────────────────► │ name · tag           │
    │ runs_on →            │                       │ address · tailscale  │
-   │ web_url · database   │ ◄┄┄ hosts ┄┄┄┄┄┄┄┄┄┄  │ web_url              │
-   │ status               │   (derived, read-only)│ host·os·ram·disk     │
+   │ local_url · ts_url   │ ◄┄┄ hosts ┄┄┄┄┄┄┄┄┄┄  │ local_url · ts_url   │
+   │ database · status    │   (derived, read-only)│ host·os·ram·disk     │
    │ roles[ ]             │                       │ software[ ]·provisd  │
    └──────────────────────┘                       └──────────────────────┘
 
@@ -72,6 +72,7 @@ fields, not one.
 | Field | Type | Note |
 |---|---|---|
 | `name` | text, unique | identity — `BdRPiSrvDev`, `BdRPiSrvAMI`, … |
+| `nickname` | text | free-text display label for the web pages (spaces / punctuation OK). Blank → falls back to `name`. |
 | `tag` | text | short parenthetical shown by the name |
 | `address` | text | primary LAN IP / hostname |
 | `tailscale_ip` | text | tailnet IP, blank if not on the tailnet |
@@ -96,9 +97,11 @@ fixed role matrix in place of free-text agent names.
 | Field | Type | Note |
 |---|---|---|
 | `name` | text, unique | identity — the repo directory name |
+| `nickname` | text | free-text display label for the web pages (spaces / punctuation OK). Blank → falls back to `name`. |
 | `exists` | bool | repo is on disk (`BdRIS` is false) |
 | `runs_on` | FK → server, nullable | **from `apps.server_id`** — null = not deployed |
-| `web_url` | text | **from `apps.web_address`** — the deployed app's URL |
+| `local_url` | text | deployed app URL on the LAN / mDNS, rendered as a link. Was `web_url` (from `apps.web_address`). |
+| `ts_url` | text | Tailscale front-door URL for the app (`https://<node>.tail0ed3f6.ts.net[:port]`), blank where it isn't exposed on the tailnet. |
 | `database` | enum | **from `apps.db`** — `none` / `SQLite` / `Supabase` / `shares:<project>` |
 | `status` | enum | **replaces `apps.planned`** — `planned` / `building` / `deployed` / `live` |
 | `roles[ ]` | M:N catalogue | PM / Web / DB / Elec Ctrl / Elec LV-HV / Doco — Y/N, mirrors `software` |
@@ -106,6 +109,14 @@ fixed role matrix in place of free-text agent names.
 
 Dropped from `apps`: `name` (same as the project), `tag` (folds into
 `notes` / `status`), and the separate row itself.
+
+`servers.nickname` + `projects.nickname` added 2026-09-07
+(`supabase/DRAFT_ecosystem_nickname.sql`) — a display label for the web
+pages so a name can carry spaces; blank falls back to `name`.
+
+`projects.web_url` → `local_url` + new `ts_url` on 2026-09-04
+(`supabase/DRAFT_ecosystem_web_columns.sql`, same migration as the servers
+change) — the Ecosystem "Projects" grid shows both as separate link columns.
 
 ## When a separate `app` table earns its place
 

@@ -1902,8 +1902,8 @@ function ecoTextCell(scope, i, field, value, extraClass) {
 }
 
 // Raw URL text while editing (so ecoSyncTable picks it up), clickable link
-// otherwise. `field` is the ecoData key -- 'local_url' / 'ts_url' on a server
-// row, 'web_url' on a project row.
+// otherwise. `field` is the ecoData key -- 'local_url' / 'ts_url' on both
+// server and project rows.
 function ecoWebCell(scope, i, field, url) {
   if (ecoEditing) {
     return `<td class="eco2-mono eco2-edit" contenteditable="true" data-${scope}="${i}" data-field="${field}">${escapeHtml(url || '')}</td>`;
@@ -1970,7 +1970,7 @@ function renderEcoServers() {
   const table = document.getElementById('eco-servers-table');
   if (!table) return;
   const head = `<thead><tr>
-      <th>Name</th><th>Address</th><th>Tailscale IP</th>
+      <th>Name</th><th>Nick Name</th><th>Address</th><th>Tailscale IP</th>
       <th>Local URL</th><th>Tailscale URL</th><th>Prov</th>
       <th>Host</th><th>OS</th><th>RAM</th><th>Disk</th>
       <th>Claude</th><th>Nginx</th><th>Supabase</th><th>SQLite</th>
@@ -1978,6 +1978,7 @@ function renderEcoServers() {
     </tr></thead>`;
   const rows = ecoData.servers.map((s, i) => `<tr class="${s.provisioned ? '' : 'eco2-unprov'}">
       ${ecoTextCell('si', i, 'name', s.name, 'eco2-mono')}
+      ${ecoTextCell('si', i, 'nickname', s.nickname)}
       ${ecoTextCell('si', i, 'address', s.address, 'eco2-mono')}
       ${ecoTextCell('si', i, 'tailscale', s.tailscale, 'eco2-mono')}
       ${ecoWebCell('si', i, 'local_url', s.local_url)}
@@ -2006,18 +2007,20 @@ function renderEcoProjects() {
   );
   const statusOptions = ecoOptions.status || ['planned', 'building', 'deployed', 'live'];
   const head = `<thead><tr>
-      <th>Name</th>
+      <th>Name</th><th>Nick Name</th>
       ${ECO_ROLES.map(r => `<th>${r[1]}</th>`).join('')}
-      <th>Runs on</th><th>Web URL</th><th>Database</th><th>Status</th>
+      <th>Runs on</th><th>Local URL</th><th>Tailscale URL</th><th>Database</th><th>Status</th>
       ${ecoEditing ? '<th></th>' : ''}
     </tr></thead>`;
   const rows = ecoData.projects.map((p, i) => {
     const roles = p.roles || [];
     return `<tr>
       ${ecoTextCell('pi', i, 'name', p.name, 'eco2-mono')}
+      ${ecoTextCell('pi', i, 'nickname', p.nickname)}
       ${ECO_ROLES.map(r => ecoYnCell('pi', i, 'role:' + r[0], roles.indexOf(r[0]) !== -1)).join('')}
       ${ecoSelectCell('pi', i, 'runs_on', p.runs_on, serverNames)}
-      ${ecoWebCell('pi', i, 'web_url', p.web_url)}
+      ${ecoWebCell('pi', i, 'local_url', p.local_url)}
+      ${ecoWebCell('pi', i, 'ts_url', p.ts_url)}
       ${ecoSelectCell('pi', i, 'database', p.database, dbOptions)}
       ${ecoSelectCell('pi', i, 'status', p.status, statusOptions)}
       ${ecoEditing ? `<td><button type="button" class="eco-rm" onclick="ecoRemoveRow('projects', ${i})">✕</button></td>` : ''}
@@ -2118,13 +2121,13 @@ function ecoAddRow(kind) {
   ecoSyncAll();
   if (kind === 'servers') {
     ecoData.servers.push({
-      name: '', tag: '', address: '', tailscale: '', local_url: '', ts_url: '',
+      name: '', nickname: '', tag: '', address: '', tailscale: '', local_url: '', ts_url: '',
       host: '', os: '', ram: '', disk: '', claude: false, nginx: false,
       supabase: false, sqlite: false, git: '', provisioned: true, dev_host: false,
     });
   } else {
     ecoData.projects.push({
-      name: '', exists: true, roles: [], runs_on: '', web_url: '',
+      name: '', nickname: '', exists: true, roles: [], runs_on: '', local_url: '', ts_url: '',
       database: 'none', status: 'planned',
     });
   }
@@ -2162,10 +2165,10 @@ async function loadEcosystem() {
 // (and fleet_db.py) whenever a server/project field is added or removed.
 
 const ECO_CSV_COLUMNS = {
-  servers: ['name', 'tag', 'address', 'tailscale', 'local_url', 'ts_url', 'host',
+  servers: ['name', 'nickname', 'tag', 'address', 'tailscale', 'local_url', 'ts_url', 'host',
             'os', 'ram', 'disk', 'claude', 'nginx', 'supabase', 'sqlite',
             'git', 'provisioned', 'dev_host'],
-  projects: ['name', 'exists', 'roles', 'runs_on', 'web_url', 'database', 'status'],
+  projects: ['name', 'nickname', 'exists', 'roles', 'runs_on', 'local_url', 'ts_url', 'database', 'status'],
 };
 const ECO_CSV_BOOL = {
   servers: ['claude', 'nginx', 'supabase', 'sqlite', 'provisioned', 'dev_host'],
@@ -2253,10 +2256,10 @@ function ecoImportCsv(kind, file) {
     cols.forEach(c => { const j = header.indexOf(c); if (j !== -1) at[c] = j; });
     if (at.name == null) return fail('CSV needs a "name" column header');
     const seed = () => (kind === 'servers'
-      ? { name: '', tag: '', address: '', tailscale: '', local_url: '', ts_url: '',
+      ? { name: '', nickname: '', tag: '', address: '', tailscale: '', local_url: '', ts_url: '',
           host: '', os: '', ram: '', disk: '', claude: false, nginx: false,
           supabase: false, sqlite: false, git: '', provisioned: true, dev_host: false }
-      : { name: '', exists: true, roles: [], runs_on: '', web_url: '',
+      : { name: '', nickname: '', exists: true, roles: [], runs_on: '', local_url: '', ts_url: '',
           database: 'none', status: 'planned' });
     const out = rows.slice(1).map(r => {
       const o = seed();
