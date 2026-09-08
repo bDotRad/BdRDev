@@ -678,6 +678,7 @@
     <button class="tab-btn" id="tab-btn-log" onclick="switchTab('log')">Activity Log</button>
     <button class="tab-btn" id="tab-btn-admin" onclick="switchTab('admin')">Admin</button>
     <button class="tab-btn" id="tab-btn-ecosystem" onclick="switchTab('ecosystem')">Ecosystem</button>
+    <button class="tab-btn" id="tab-btn-ecotree" onclick="switchTab('ecotree')">Ecosystem Tree</button>
     <button class="tab-btn" id="tab-btn-independent" onclick="openConsole(INDEPENDENT_SESSION)">CLAUDE</button>
     <a class="help-link" href="/help">Help</a>
     <a class="help-link help-link-extra" href="/help-simple">Help for Retards</a>
@@ -868,6 +869,11 @@
     </div>
   </div>
 
+  <div id="tab-panel-ecotree" class="tab-panel">
+    <div class="sql-meta" id="ecotree-source"></div>
+    <div id="ecotree-canvas"><div class="empty-state">Loading&hellip;</div></div>
+  </div>
+
   <div id="sql-overlay">
     <div id="sql-modal">
       <h3 id="sql-title">SQL output</h3>
@@ -1010,7 +1016,7 @@ let ecoConfigured = false;
 let ecoFallbackReason = null;
 let ecoOptions = {};
 
-const TAB_NAMES = ['projects', 'processing', 'workspace', 'log', 'admin', 'ecosystem'];
+const TAB_NAMES = ['projects', 'processing', 'workspace', 'log', 'admin', 'ecosystem', 'ecotree'];
 
 let procPollTimer = null;
 
@@ -1022,6 +1028,7 @@ function switchTab(name) {
   }
   try { localStorage.setItem('bdrdev-tab', name); } catch (e) { /* ignore */ }
   if (name === 'ecosystem') { if (ecoData === null) loadEcosystem(); else renderEcoView(); }
+  if (name === 'ecotree') { if (ecoData === null) loadEcosystem(); else renderEcoTree(); }
   if (name === 'workspace') enterWorkspace();
   else stopWsConsolePoll();
   if (name === 'processing') {
@@ -2039,6 +2046,151 @@ function renderEcoView() {
   renderEcoServers();
   renderEcoProjects();
   ecoRenderActions();
+  renderEcoTree();
+}
+
+// ---- Ecosystem Tree tab ----------------------------------------------
+// Read-only picture built from the same ecoData as the Ecosystem grids:
+// a GitHub cloud on top, each provisioned server below it, and every
+// project bubbled under the server its `runs_on` names. Projects whose
+// runs_on doesn't match any server get their own "unplaced" column so
+// the mismatch is visible rather than hidden.
+
+const ECOTREE_STATUS = {
+  live:     { fill: 'var(--processing)', label: 'live' },
+  building: { fill: 'var(--waiting)',    label: 'building' },
+  deployed: { fill: 'var(--sql)',        label: 'deployed' },
+  planned:  { fill: 'var(--idle)',       label: 'planned' },
+};
+
+function ecotreeStatus(s) {
+  return ECOTREE_STATUS[s] || { fill: 'var(--idle)', label: s || '—' };
+}
+
+function renderEcoTree() {
+  const host = document.getElementById('ecotree-canvas');
+  if (!host || !ecoData) return;
+
+  const srcEl = document.getElementById('ecotree-source');
+  if (srcEl) {
+    const t = document.getElementById('eco-source');
+    srcEl.textContent = t ? t.textContent : '';
+    srcEl.style.display = srcEl.textContent ? '' : 'none';
+  }
+
+  const servers = (ecoData.servers || []).slice();
+  const projects = (ecoData.projects || []).slice();
+
+  // Column per server that has >=1 project, plus an "unplaced" column for
+  // projects whose runs_on matches no server. Server order = ecoData order.
+  const byServer = new Map();
+  servers.forEach(s => byServer.set(s.name, []));
+  const unplaced = [];
+  projects.forEach(p => {
+    if (byServer.has(p.runs_on)) byServer.get(p.runs_on).push(p);
+    else unplaced.push(p);
+  });
+
+  const cols = [];
+  servers.forEach(s => {
+    const kids = byServer.get(s.name);
+    if (kids.length) cols.push({ server: s, projects: kids });
+  });
+  if (unplaced.length) cols.push({ server: null, projects: unplaced });
+
+  if (!cols.length) { host.innerHTML = '<div class="empty-state">No ecosystem data.</div>'; return; }
+
+  const COL_W = 260, PAD = 24;
+  const CLOUD_H = 92, SERVER_Y = 150, SERVER_H = 74;
+  const BUB_TOP = SERVER_Y + SERVER_H + 46, BUB_GAP = 66, BUB_H = 46;
+  const maxKids = Math.max(...cols.map(c => c.projects.length));
+  const W = cols.length * COL_W + PAD * 2;
+  const H = BUB_TOP + Math.max(1, maxKids) * BUB_GAP + PAD;
+  const cx = i => PAD + COL_W * i + COL_W / 2;
+  const cloudCx = W / 2;
+
+  const esc = escapeHtml;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px" font-family="inherit">`;
+
+  // cloud
+  svg += `<g>
+    <path d="M ${cloudCx-108} ${CLOUD_H} a 30 30 0 0 1 5 -58 a 40 40 0 0 1 77 -13 a 35 35 0 0 1 53 11 a 28 28 0 0 1 5 60 Z"
+      fill="var(--card)" stroke="var(--card-border)" stroke-width="1.5"/>
+    <text x="${cloudCx}" y="${CLOUD_H-40}" text-anchor="middle" fill="var(--text)" font-size="13" font-weight="700">GitHub</text>
+    <text x="${cloudCx}" y="${CLOUD_H-22}" text-anchor="middle" fill="var(--text-dim)" font-size="10.5">github.com/bDotRad · origin of truth</text>
+  </g>`;
+
+  cols.forEach((col, i) => {
+    const x = cx(i);
+    // cloud -> server connector
+    svg += `<path d="M ${cloudCx} ${CLOUD_H} C ${cloudCx} ${SERVER_Y-30}, ${x} ${CLOUD_H+20}, ${x} ${SERVER_Y}"
+      fill="none" stroke="var(--card-border)" stroke-width="1.5" stroke-dasharray="4 4"/>`;
+
+    const s = col.server;
+    const boxX = x - COL_W / 2 + 14, boxW = COL_W - 28;
+    if (s) {
+      let meta = s.tag || '';
+      if (s.address && !meta.includes(s.address)) meta = meta ? meta + ' · ' + s.address : s.address;
+      svg += `<g>
+        <rect x="${boxX}" y="${SERVER_Y}" width="${boxW}" height="${SERVER_H}" rx="10"
+          fill="var(--card)" stroke="var(--accent)" stroke-width="1.5"/>
+        <rect x="${boxX+14}" y="${SERVER_Y+16}" width="30" height="21" rx="3" fill="none" stroke="#6cc04a" stroke-width="1.5"/>
+        <circle cx="${boxX+21}" cy="${SERVER_Y+23}" r="1.8" fill="#c51a4a"/>
+        <circle cx="${boxX+21}" cy="${SERVER_Y+31}" r="1.8" fill="#c51a4a"/>
+        <circle cx="${boxX+38}" cy="${SERVER_Y+23}" r="1.8" fill="#6cc04a"/>
+        <circle cx="${boxX+38}" cy="${SERVER_Y+31}" r="1.8" fill="#6cc04a"/>
+        <text x="${boxX+54}" y="${SERVER_Y+24}" fill="var(--text)" font-size="12.5" font-weight="700">${esc(s.name)}</text>
+        <text x="${boxX+54}" y="${SERVER_Y+39}" fill="var(--text-dim)" font-size="9.5">${esc(s.nickname || '')}</text>
+        <text x="${x}" y="${SERVER_Y+62}" text-anchor="middle" fill="var(--text-dim)" font-size="9.5">${esc(meta)}</text>
+      </g>`;
+    } else {
+      svg += `<g>
+        <rect x="${boxX}" y="${SERVER_Y}" width="${boxW}" height="${SERVER_H}" rx="10"
+          fill="var(--card)" stroke="var(--card-border)" stroke-width="1.5" stroke-dasharray="5 3"/>
+        <text x="${x}" y="${SERVER_Y+34}" text-anchor="middle" fill="var(--text-dim)" font-size="12" font-weight="700">not mapped to a server</text>
+        <text x="${x}" y="${SERVER_Y+52}" text-anchor="middle" fill="var(--text-dim)" font-size="9.5">check each project's “Runs on”</text>
+      </g>`;
+    }
+
+    // spine + bubbles
+    const spineX = x;
+    const lastY = BUB_TOP + (col.projects.length - 1) * BUB_GAP;
+    svg += `<path d="M ${spineX} ${SERVER_Y+SERVER_H} L ${spineX} ${lastY}" fill="none" stroke="var(--card-border)" stroke-width="1.5"/>`;
+
+    col.projects.forEach((p, j) => {
+      const by = BUB_TOP + j * BUB_GAP;
+      const st = ecotreeStatus(p.status);
+      const faint = p.exists === false;
+      const bw = COL_W - 40, bx = x - bw / 2;
+      const dbShort = (p.database && p.database !== 'none' && p.database.length <= 16) ? p.database : '';
+      const sub = [st.label, dbShort].filter(Boolean).join(' · ');
+      svg += `<path d="M ${spineX} ${by} L ${bx} ${by}" fill="none" stroke="var(--card-border)" stroke-width="1.5"/>`;
+      svg += `<g${faint ? ' opacity="0.55"' : ''}>
+        <rect x="${bx}" y="${by-BUB_H/2}" width="${bw}" height="${BUB_H}" rx="${BUB_H/2}"
+          fill="var(--card)" stroke="${st.fill}" stroke-width="1.5" ${faint ? 'stroke-dasharray="4 3"' : ''}/>
+        <circle cx="${bx+18}" cy="${by}" r="5" fill="${st.fill}"/>
+        <text x="${bx+34}" y="${by-3}" fill="var(--text)" font-size="12" font-weight="600">${esc(p.name)}</text>
+        <text x="${bx+34}" y="${by+12}" fill="var(--text-dim)" font-size="9.5">${esc(sub)}</text>
+      </g>`;
+    });
+  });
+
+  // legend
+  const items = [['live','var(--processing)'],['building','var(--waiting)'],['deployed','var(--sql)'],['planned','var(--idle)']];
+  let lx = PAD;
+  svg += `<g transform="translate(0 ${H-8})">`;
+  items.forEach(([lab, col]) => {
+    svg += `<circle cx="${lx+5}" cy="0" r="5" fill="${col}"/><text x="${lx+16}" y="4" fill="var(--text-dim)" font-size="10">${lab}</text>`;
+    lx += 24 + lab.length * 6.5 + 14;
+  });
+  svg += `</g></svg>`;
+
+  // Resolve CSS custom properties to concrete colours -- var() isn't
+  // reliably honoured inside SVG presentation attributes across browsers.
+  const cs = getComputedStyle(document.body);
+  svg = svg.replace(/var\(--([a-z-]+)\)/g, (m, k) => cs.getPropertyValue('--' + k).trim() || m);
+
+  host.innerHTML = svg;
 }
 
 function ecoEnterEdit() {
