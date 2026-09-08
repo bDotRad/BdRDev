@@ -1360,10 +1360,32 @@ APPS_SCRIPT = r"""
 <script>
 (function(){
   var POLL_MS = 15000;
+  // A dropped fetch (page can't reach this server -- e.g. a cached .local
+  // URL opened over Tailscale, where mDNS names don't resolve) used to be
+  // swallowed silently, leaving the last server-rendered HTML on screen so
+  // a "Check" looked like it succeeded and returned "up to date". Surface
+  // it: any network failure raises this banner; the next good fetch drops
+  // it.
+  var offlineEl = null;
+  function offline(on){
+    if(!offlineEl){
+      offlineEl = document.createElement('div');
+      offlineEl.id = 'offline';
+      offlineEl.hidden = true;
+      offlineEl.style.cssText = 'position:sticky;top:0;z-index:99;background:#f85149;'
+        + 'color:#fff;padding:8px 14px;font:600 13px/1.4 system-ui,sans-serif;text-align:center';
+      offlineEl.textContent = "Can't reach this dashboard's server — anything below "
+        + "may be stale. On Tailscale a cached .local address won't resolve; use the "
+        + "MagicDNS name or the server's Tailscale IP.";
+      document.body.insertBefore(offlineEl, document.body.firstChild);
+    }
+    offlineEl.hidden = !on;
+  }
   function post(url, body){
     return fetch(url, {method:'POST', headers:{'Content-Type':'application/json'},
                        body:JSON.stringify(body||{})})
-           .then(function(r){ return r.json().then(function(j){return {ok:r.ok,j:j};}); });
+           .then(function(r){ return r.json().then(function(j){ offline(false); return {ok:r.ok,j:j}; }); },
+                 function(err){ offline(true); throw err; });
   }
   function rel(iso){
     if(!iso) return 'never';
@@ -1448,7 +1470,10 @@ APPS_SCRIPT = r"""
     });
   }
   function refresh(){
-    return fetch('api/state').then(function(r){return r.json();}).then(apply).catch(function(){});
+    return fetch('api/state')
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(s){ offline(false); apply(s); })
+      .catch(function(){ offline(true); });
   }
   document.addEventListener('click', function(ev){
     var btn=ev.target.closest('button'); if(!btn) return;
@@ -1456,6 +1481,7 @@ APPS_SCRIPT = r"""
     if(btn.id==='checkall'){
       btn.disabled=true; btn.textContent='checking…';
       post('api/check').then(function(){ return refresh(); })
+        .catch(function(){ offline(true); })
         .finally(function(){ btn.disabled=false; btn.textContent='check GitHub — all apps + srvhome'; });
       return;
     }
@@ -1463,6 +1489,7 @@ APPS_SCRIPT = r"""
       if(btn.classList.contains('busy')) return;
       btn.classList.add('busy'); btn.textContent='checking…';
       post('api/check',{app:'srvhome'}).then(function(){ return refresh(); })
+        .catch(function(){ offline(true); btn.textContent='check failed'; })
         .finally(function(){ btn.classList.remove('busy'); });
       return;
     }
@@ -1479,6 +1506,7 @@ APPS_SCRIPT = r"""
     if(btn.dataset.act==='check'){
       btn.disabled=true; var t=btn.textContent; btn.textContent='checking…';
       post('api/check',{app:app}).then(function(){ return refresh(); })
+        .catch(function(){ offline(true); setStatus('fail','check failed — server unreachable'); })
         .finally(function(){ btn.disabled=false; btn.textContent=t; });
     }
     else if(btn.dataset.act==='update'){
@@ -1517,6 +1545,7 @@ APPS_SCRIPT = r"""
           delete btn.dataset.busy; btn.disabled=false; btn.textContent='Retry Pull';
         }
       }).catch(function(e){
+        offline(true);
         if(pre){ pre.hidden=false; pre.textContent=String(e); }
         setStatus('fail','update failed — see output below');
         delete tile.dataset.busy;
@@ -1524,6 +1553,7 @@ APPS_SCRIPT = r"""
       });
     }
   });
+  refresh();  // don't wait a full POLL_MS to catch a stale/offline page
   setInterval(refresh, POLL_MS);
 })();
 </script>

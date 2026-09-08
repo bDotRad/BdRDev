@@ -79,6 +79,10 @@ colour-coded (green / amber / blue / red).
   stale bundle after a no-op pull is visible.
 - Tiles poll `/api/state` every 15 s so the checker and a running update
   both surface without a manual reload.
+- If the page can't reach its own server (a cached `.local` URL opened
+  over Tailscale, where mDNS names don't resolve; server down), a red
+  sticky banner appears and **Check GitHub** reports "check failed"
+  instead of silently leaving stale HTML that reads as "up to date".
 
 ### srvhome tracks itself too
 
