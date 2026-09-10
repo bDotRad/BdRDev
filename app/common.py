@@ -249,7 +249,7 @@ DEFAULT_ECOSYSTEM = {
          "database": "Supabase", "status": "building"},
         {"name": "BdRAMI", "nickname": "bdr AMI", "exists": True,
          "roles": [],
-         "runs_on": "BdRPiSrvAMI", "local_url": "https://bdrpiami.local",
+         "runs_on": "BdRPiSrvAMI", "local_url": "https://bdrpisrvami.local",
          "ts_url": "https://bdrpisrvami.tail0ed3f6.ts.net",
          "database": "SQLite — deploy history (srvhome.db)", "status": "deployed"},
         {"name": "BdRIS", "nickname": "", "exists": False,

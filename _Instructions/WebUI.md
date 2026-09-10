@@ -34,8 +34,10 @@ combined logo/name/version explorations that led to it live on the
 `LV-G` is the one Brad picked. The **BdRDev dashboard** header
 (`app/templates/index.html`, `.site-header`) is the reference
 implementation of the degraded (two-line) form; **`srvhome`**
-(`fleet/srvhome/srvhome.py`, `render_site_header`) is the reference for
-the full three-line form.
+(`srvhome/srvhome.py`, `render_site_header`, in the sibling
+`BdRPiSrvAMI` repo — checked out at `~/projects/BdRPiSrvAMI/` on `DEV`)
+is the reference for the full three-line form. The canonical markup +
+CSS live below either way.
 
 Nothing is shared as code between projects (see [`Standards.md`](Standards.md)):
 each app ports the markup + CSS below against its own palette vars, its
@@ -123,9 +125,9 @@ Clicking `.sh-pill` re-runs the app's own "compare running SHA to
 origin" check, then: add / remove `.behind` on `.site-header`, set the
 pill text to `up to date` / `behind by N`, and update the `HEAD` chip's
 SHA. While the check is in flight give the pill `.busy` and text
-`checking…`. `srvhome` (`fleet/srvhome/srvhome.py`) already does this
-comparison server-side (`check_one()` / `app_state()`) — reuse that
-pattern rather than inventing a new endpoint.
+`checking…`. `srvhome` (`srvhome/srvhome.py` in the `BdRPiSrvAMI` repo)
+already does this comparison server-side (`check_one()` / `app_state()`)
+— reuse that pattern rather than inventing a new endpoint.
 
 ### Graceful degradation
 
@@ -226,9 +228,9 @@ Any tab or view that offers a data download ("Export") or upload
   pending / not-tracked, muted grey = n/a or historical. Carry the same
   colour onto the container (a tile's left border, a row background) so
   state is scannable without reading each label. Always pair colour with
-  text -- never colour alone. Reference: `fleet/srvhome/srvhome.py`
-  (`is-running` / `is-stopped` / `is-unknown` tiles, the "live here"
-  row highlight, and the footer legend).
+  text -- never colour alone. Reference: `srvhome/srvhome.py` in the
+  `BdRPiSrvAMI` repo (`is-running` / `is-stopped` / `is-unknown` tiles
+  and the "live here" deploy-history row highlight).
 
 Extend this section as shared patterns get settled (forms, modals,
 status lines, empty states).
