@@ -1,29 +1,22 @@
 WAITING RESPONSE
 
-<!-- 2026-09-09 diagnostic writeup; 2026-09-11 Brad said "build away".
-     PROGRESS 2026-09-11:
-       - Task 1 (final port): already done by 026abbd — the fork is
-         current with canonical through ad12f18 (the last fleet/srvhome
-         commit). Nothing to port.
-       - Task 4 (page redesign): DONE in ~/projects/BdRPiSrvAMI working
-         tree — header sub-line removed, two tabs (App status / Server &
-         app info), chat box always-visible below. Compiles + renders +
-         serves 200 locally. NOT yet committed/pushed (tool-permission
-         prompts started timing out mid-session).
-       - Task 2 (BdRDev cleanup): NOT started.
-       - Task 3 (Brad Action block): still outstanding.
-     Q1: going with option 1 (repoint WebUI.md refs to the dashboard's
-     render_site_header) unless Brad says otherwise. -->
+<!-- 2026-09-09 diagnostic writeup → 2026-09-11 built. Code + docs done
+     and pushed (both repos). Only the Task 3 Action block (apt upgrade
+     + pull + restart on AMI) is left — flip to READY / archive once Brad
+     has run it. -->
 
-# Make `BdRPiSrvAMI` the canonical home of `srvhome` — finish the move, fix the docs
+# Make `BdRPiSrvAMI` the canonical home of `srvhome` + redesign the page
 
-## Decision (Brad, 2026-09-09)
+## Decision (Brad, 2026-09-09 / 2026-09-11)
 
 > "just make BdRPiSrvAMI the project and the page that runs"
+> "up it… build away."
 
 `srvhome` (the per-box status page at `/` on `AMI`) is now **owned by the
-`bDotRad/BdRPiSrvAMI` config repo**. `BdRDev/fleet/srvhome/` stops being
-canonical and goes away. No `bDotRad/BdRDev` checkout on `AMI`.
+`bDotRad/BdRPiSrvAMI` config repo** (`srvhome/`). `BdRDev/fleet/srvhome/`
+is gone. `AMI` runs srvhome from its own config-repo checkout — no
+`bDotRad/BdRDev` checkout on that box. `BdRDev` still owns the fleet
+WebUI standard (`_Instructions/WebUI.md`) the page follows.
 
 ## How we got here (for the archive)
 
@@ -33,112 +26,74 @@ reconciled the other's docs:
 - **2026-09-07** `4f9e889` + `fleet/srvhome/DEPLOY-STATUS.md`: "deploy
   srvhome as a read-only `bDotRad/BdRDev` checkout at
   `~/projects/BdRPiAMI/BdRDev`, run from `fleet/srvhome/` inside it."
-  Every BdRDev doc still describes this.
 - **2026-09-08 12:07** `ad12f18`: canonical `fleet/srvhome/` still being
   actively developed on that assumption.
 - **2026-09-08 12:43** `026abbd` (on `bDotRad/BdRPiSrvAMI`): a session
   reversed it — copied srvhome into the config repo as `srvhome/`,
-  adapted `srvhome.py` (logo path → alongside the script, dropped the
+  adapted `srvhome.py` (logo path alongside the script, dropped the
   `<repo>/fleet/srvhome/` layout assumption, footer/self-panel repointed
-  at `bDotRad/BdRPiSrvAMI`), bundled `rat-logo.png`. Commit message:
-  *"so the AMI box stops running its / page from a BdRDev checkout.
-  Next: cut the Pi over … and delete `~/projects/BdRPiAMI/BdRDev`."*
+  at `bDotRad/BdRPiSrvAMI`), bundled `rat-logo.png`. The cutover
+  happened: `~/projects/BdRPiAMI/BdRDev` was deleted, srvhome kept
+  running from `~/projects/BdRPiAMI/srvhome/`. But every BdRDev doc still
+  described the retired model, and `BdRDev/fleet/srvhome/` was still
+  nominally canonical.
 
-That cutover already happened. **Current live state on `AMI`:**
-`~/projects/BdRPiAMI/BdRDev` is gone; srvhome runs from
-`~/projects/BdRPiAMI/srvhome/` (a subdir of the `BdRPiSrvAMI` checkout,
-branch `main` @ `026abbd`), per-minute `run.sh` cron keepalive, nginx
-still proxies `127.0.0.1:8610` at `location /`. Process healthy.
+## What was done — 2026-09-11 (both repos pushed)
 
-So the screenshot's "srvhome · HEAD 026abbd · branch main · up to date"
-pill is honest — it just tracks the config repo now. The problem is
-purely that `BdRDev/fleet/srvhome/` is still nominally canonical and
-every BdRDev doc points at the retired model. This request makes the
-codebase stop lying and locks the config repo in as the single source.
+### `bDotRad/BdRPiSrvAMI`
 
-## State check already done
+- `644cf6a` **page redesign** (`srvhome/srvhome.py`, `srvhome/README.md`):
+  - removed the `"<server> — hardware, stack, hosted apps and deploy
+    history. Generated <ts>."` sub-line under the standard header.
+  - **two tabs**, active tab persisted in `location.hash` (`#status` /
+    `#info`) so the 15s poll / a refresh doesn't bounce off it:
+    - **App status** — one interactive status tile per app + srvhome
+      (deployed SHA / branch / link, live status box, Check GitHub /
+      Pull). Same `data-app` / `data-role` hooks, so the existing poll +
+      click JS drives it unchanged.
+    - **Server & app info** — the server panel (srvhome's own update
+      tile no longer jammed into it; "Updates" card renamed "OS
+      updates"), then a per-application block: description, URL, repo
+      path, deployed SHA, full deploy-history table.
+  - Claude chat box stays below the tabs, always visible.
+  - `render_apps()` + `render_self_updates()` → `render_status_tile()` /
+    `render_app_status()` / `render_app_info()`; `render_history_rows()`
+    gained a `bare` mode. Compiles, renders, serves `200` locally.
+- `1a5af39` brought `update.sh` into `srvhome/` (was
+  `BdRDev/fleet/update.sh`).
+- Task 1 "final port" was a no-op — `026abbd` was already current with
+  canonical through `ad12f18` (the last `fleet/srvhome/` commit);
+  `store.py` / `record_deploy.py` byte-identical.
 
-- `BdRPiSrvAMI/srvhome/` is complete and self-consistent (has
-  `rat-logo.png`, `LOGO_PATH` alongside, footer + self-panel repointed).
-  Only file dropped vs `BdRDev/fleet/srvhome/` is `DEPLOY-STATUS.md`
-  (BdRDev-specific — correctly gone).
-- `srvhome/srvhome.py` in the config repo forked at 12:43; `ad12f18`
-  ("surface an unreachable dashboard instead of showing stale data")
-  landed at 12:07 the same day — **needs verifying** it was carried
-  across, plus anything in `fleet/srvhome/` after `ad12f18`
-  (`git -C ~/projects/BdRDev log --oneline ad12f18..HEAD -- fleet/srvhome/`).
-- `store.py` / `record_deploy.py` are byte-identical between the two.
+### `bDotRad/BdRDev` — `1f60164`
 
----
+- removed `fleet/srvhome/` and `fleet/update.sh`; `fleet/README.md` left
+  as a tombstone pointer.
+- `_Instructions/FLEET.md` / `Naming.md`: srvhome canonical source is now
+  `BdRPiSrvAMI/srvhome/`; dropped the `~/projects/BdRPiAMI/BdRDev` story;
+  "last verified" → 2026-09-11.
+- `_Instructions/WebUI.md`: **Q1 resolved → option 2** — the srvhome
+  reference-implementation pointers now name `srvhome/srvhome.py` in the
+  sibling `BdRPiSrvAMI` repo (checked out at `~/projects/BdRPiSrvAMI/` on
+  DEV); the canonical markup + CSS were always in WebUI.md itself, so
+  nothing is lost. (Option 1 didn't work — the dashboard header only
+  demonstrates the *two*-line form; srvhome is the only full three-line
+  example.)
+- `app/common.py`: fixed the stale `BdRAMI` seed hostname
+  (`bdrpiami.local` → `bdrpisrvami.local`).
+- committed the previously-untracked fleet-map docs (`FLEET.md`,
+  `Naming.md`, `Guardrails.md`) + `rFleetMap.md` alongside, since the
+  root `CLAUDE.md` already points readers at them.
 
-## Task 1 — `BdRPiSrvAMI` repo (work in `~/projects/BdRPiSrvAMI` on DEV)
+## Still open
 
-Belongs to that project, not BdRDev — a session there should:
+### Fleet map / Supabase (whoever runs `rFleetMap` picks this up)
 
-1. Diff `BdRPiSrvAMI/srvhome/srvhome.py` against
-   `BdRDev` `HEAD:fleet/srvhome/srvhome.py` and port any missing
-   behaviour changes (expected: `ad12f18` and any later `fleet/srvhome/`
-   commits) — this is the **last** sync; after it the BdRDev copy is
-   deleted.
-2. Confirm `srvhome/README.md` fully owns it (no "canonical source:
-   BdRDev" language left anywhere — footer string already fixed in
-   `026abbd`, check the README prose too).
-3. `srvhome/install.sh` self-track block: verify `SRVHOME_APP_PATH` /
-   the `--path` filter point at `srvhome` (not `fleet/srvhome`) so the
-   self deploy-history and post-merge hook are correct for this repo
-   layout.
-4. Commit + push from DEV (never from AMI).
+`servers.serves_root` for AMI + the `BdRAMI` project row: srvhome's repo
+is `bDotRad/BdRPiSrvAMI`, it is not an app. Left for `rFleetMap` since
+that request adds the `serves_root` / `is_app` columns anyway.
 
-## Task 2 — `BdRDev` repo (this project)
-
-Only after Task 1 is pushed:
-
-1. `git rm -r fleet/srvhome/`. Leave `fleet/README.md` (or a short
-   `fleet/SRVHOME-MOVED.md`) pointing at `bDotRad/BdRPiSrvAMI` →
-   `srvhome/`.
-2. Docs to rewrite so srvhome reads as "lives in `bDotRad/BdRPiSrvAMI`,
-   not here":
-   - `CLAUDE.md` — the "srvhome runs from a read-only BdRDev checkout"
-     bullet in "Things that aren't obvious"; any `fleet/srvhome`
-     pointer.
-   - `_Instructions/FLEET.md` — AMI "what runs where" row (drop the
-     `~/projects/BdRPiAMI/BdRDev` sentence, say it runs from the
-     `BdRPiSrvAMI` checkout's `srvhome/`); "Projects → deploy target"
-     table; remove `~/projects/BdRPiAMI/BdRDev` everywhere; bump "last
-     verified".
-   - `_Instructions/Naming.md` — lines 42, 48, 60-66: `srvhome`
-     canonical source is now `bDotRad/BdRPiSrvAMI` `/srvhome/`; drop
-     "source" from the `DEV`/`BdRDev` role blurb.
-   - `_Instructions/Guardrails.md` — the srvhome examples still stand
-     (it's still "the page at `/` on AMI, not an app"); just fix any
-     "canonical source" path.
-   - `_Instructions/WebUI.md` — lines 23, 36-37, 126, 132-135, 229:
-     these point at `fleet/srvhome/srvhome.py` as the **reference
-     implementation** of the standard header / degraded two-line form.
-     Once the file leaves this repo a BdRDev session can't open it.
-     Repoint to the dashboard's own `render_site_header`
-     (`app/…`) as the in-repo reference and note the srvhome copy lives
-     in `bDotRad/BdRPiSrvAMI`. **See Q1.**
-   - `_Instructions/SSH.md` line 68 — the "restart srvhome on the Pi"
-     example is fine, leave it.
-   - `README.md` "Conventions this implements" / any `fleet/srvhome`
-     mention.
-   - `app/common.py` ~line 254 — the `BdRAMI` ecosystem seed row:
-     `local_url` is `https://bdrpiami.local` (stale hostname → should be
-     `bdrpisrvami.local`); keep `database: "SQLite — deploy history
-     (srvhome.db)"`.
-   - `_Requests/rFleetMap.md` — it's `NOT READY`; update its srvhome /
-     `is_app` / `serves_root` references to match (srvhome source repo,
-     not `BdRDev/fleet/srvhome`).
-   - `_Notes/260829_independent_session_fleet_review.md` — historical
-     note, leave as-is.
-3. Fleet map / Supabase (per `Requests.md` § "Keeping the fleet map
-   current"): update `servers.serves_root` for AMI and the srvhome /
-   `BdRAMI` project row so the ecosystem data matches — srvhome's repo
-   is `bDotRad/BdRPiSrvAMI`, it is not an app.
-4. Commit + push.
-
-## Task 3 — Action block for Brad (on `AMI`)
+### Task 3 — Action block for Brad (on `AMI`)
 
 @@@ --- Action --- @@@
 
@@ -147,43 +102,25 @@ Only after Task 1 is pushed:
 "on AMI"
 sudo apt update && sudo apt upgrade -y
 
-2. Pull the last srvhome catch-up commit (after Task 1 is pushed) and restart
+2. Pull the redesigned srvhome and restart it
 
-"on AMI — refresh the running copy"
+"on AMI — the running page is from ~/projects/BdRPiAMI (the BdRPiSrvAMI
+checkout); pull the new tabbed layout"
 cd ~/projects/BdRPiAMI && git pull --ff-only
-pkill -f 'BdRPiAMI/srvhome/srvhome.py'   # per-minute run.sh cron restarts it
 
-"on AMI — re-run the installer from the config-repo layout so the
-post-merge hooks + deploy-history backfill match srvhome living at
-~/projects/BdRPiAMI/srvhome/ (not a fleet/srvhome/ checkout)"
+"on AMI — restart so the new code loads (per-minute run.sh cron brings
+it back on :8610). SIGTERM is fine here — run.sh restarts it, not systemd"
+pkill -f 'BdRPiAMI/srvhome/srvhome.py'
+sleep 90    # or run: ~/projects/BdRPiAMI/srvhome/run.sh
+
+"on AMI — re-run the installer so the deploy-history backfill + the
+post-merge hook that records srvhome's own version pick up update.sh
+now living in the repo"
 cd ~/projects/BdRPiAMI/srvhome && ./install.sh
 
-"on AMI — verify"
+"on AMI — verify: healthz ok, page 200, and the header no longer has the
+'Generated …' sub-line / now shows the App status + Server & app info tabs"
 curl -s http://127.0.0.1:8610/healthz
-curl -sI https://bdrpisrvami.local/ | head -1
+curl -s http://127.0.0.1:8610/ | grep -o 'data-tab=[a-z]*'
 
 @@@ ------------- @@@
-
-## Decisions
-
-??? --- Question --- ???
-
-Q1. `_Instructions/WebUI.md` points at `fleet/srvhome/srvhome.py` as the
-reference implementation of the standard header block (esp. the degraded
-two-line form and the running-vs-origin deploy-status line). Once
-srvhome moves out, BdRDev sessions can't open that file. Repoint those
-references to:
-
-Options:
-1. The dashboard's own `render_site_header` in `app/` as the in-repo
-   reference, with a note that srvhome (`bDotRad/BdRPiSrvAMI /srvhome/`)
-   is the other live example (recommended)
-2. Keep pointing at srvhome by repo-qualified path
-   (`bDotRad/BdRPiSrvAMI /srvhome/srvhome.py`) even though it's not
-   checked out here
-3. Vendor just `srvhome.py` back into BdRDev as a read-only reference
-   copy (rejected the "one source" goal — probably not)
-
-Answer:
-
-??? --------------- ???
