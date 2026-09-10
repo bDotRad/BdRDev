@@ -85,6 +85,18 @@ reconciled the other's docs:
   `Naming.md`, `Guardrails.md`) + `rFleetMap.md` alongside, since the
   root `CLAUDE.md` already points readers at them.
 
+### `bDotRad/BdRPiSrvAMI` — feedback pass 2026-09-11
+
+- `2c3a3f4`: the page now shows as **BdRPiSrvAMI** (not "srvhome") in
+  the App status tile, the info block and the footer — still keyed
+  `srvhome` internally. Deploy history is a **collapsible `<details>`
+  dropdown** again on the App status tiles (removed from the info tab).
+  `apply()` now keeps each tile's left-border colour in sync with the
+  poll — it was stuck amber ("not checked yet") even after the status
+  box said "up to date", because the server renders the border once and
+  only JS could correct it. Network + Tailscale cards span 2 columns;
+  page width 1100 → 1200 (Tailscale was too cramped).
+
 ## Still open
 
 ### Fleet map / Supabase (whoever runs `rFleetMap` picks this up)
@@ -95,17 +107,23 @@ that request adds the `serves_root` / `is_app` columns anyway.
 
 ### Task 3 — Action block for Brad (on `AMI`)
 
+The OS-updates question: the `apt upgrade` on 2026-09-09 20:35 only had
+`containerd.io` available at that moment — the other 6 were still inside
+Ubuntu's *phased* rollout. They've since gone to 100%; `apt-get -s
+upgrade` on AMI now shows all 6 upgrading cleanly, 0 held back. So it's
+just a re-run, not a stuck state.
+
 @@@ --- Action --- @@@
 
-1. Apply the 7 pending OS updates (unrelated to srvhome; no reboot flag set)
+1. Clear the 6 remaining OS updates (they were phased-held on the 9th; now available)
 
 "on AMI"
 sudo apt update && sudo apt upgrade -y
+sudo apt autoremove -y      # drops the now-unused libfwupd2 / libgusb2
 
-2. Pull the redesigned srvhome and restart it
+2. Pull the redesigned page and restart it
 
-"on AMI — the running page is from ~/projects/BdRPiAMI (the BdRPiSrvAMI
-checkout); pull the new tabbed layout"
+"on AMI — the running page is the BdRPiSrvAMI checkout at ~/projects/BdRPiAMI"
 cd ~/projects/BdRPiAMI && git pull --ff-only
 
 "on AMI — restart so the new code loads (per-minute run.sh cron brings
@@ -113,9 +131,8 @@ it back on :8610). SIGTERM is fine here — run.sh restarts it, not systemd"
 pkill -f 'BdRPiAMI/srvhome/srvhome.py'
 sleep 90    # or run: ~/projects/BdRPiAMI/srvhome/run.sh
 
-"on AMI — re-run the installer so the deploy-history backfill + the
-post-merge hook that records srvhome's own version pick up update.sh
-now living in the repo"
+"on AMI — re-run the installer so the post-merge hook / history backfill
+pick up update.sh now living in the repo"
 cd ~/projects/BdRPiAMI/srvhome && ./install.sh
 
 "on AMI — verify: healthz ok, page 200, and the header no longer has the
