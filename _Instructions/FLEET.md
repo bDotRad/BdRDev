@@ -15,8 +15,9 @@ reach each other.** Names follow [`Naming.md`](Naming.md).
 > **and** this file in the same request (see
 > [`Requests.md`](Requests.md) § "Keeping the fleet map current").
 >
-> Last verified by hand: **2026-09-11** (srvhome moved to the
-> `BdRPiSrvAMI` repo; AMI no longer runs a `BdRDev` checkout).
+> Last verified by hand: **2026-09-15** (`DUNGEON`/`BdRPiSrvDungeon`: LAN
+> `10.10.10.30` reserved, config repo scaffolded — hardware still not
+> provisioned).
 
 ## Boxes
 
@@ -24,8 +25,9 @@ reach each other.** Names follow [`Naming.md`](Naming.md).
 |---|---|---|---|---|---|---|
 | `DEV` | `BdRPiSrvDev` | Raspberry Pi, Ubuntu Server, 8GB | `10.10.8.11` | `bdrpisrvdev.tail0ed3f6.ts.net` / `100.116.147.74` | yes (scheduler + CloudCLI) | BdRDev dashboard |
 | `AMI` | `BdRPiSrvAMI` | Raspberry Pi, 8GB | `10.10.10.20` | `bdrpisrvami.tail0ed3f6.ts.net` / `100.86.25.88` | yes | `srvhome` |
-| `DUNGEON` | `BdRPiSrvDungeon` | not provisioned | — | — | planned | — |
+| `DUNGEON` | `BdRPiSrvDungeon` | hardware not provisioned | `10.10.10.30` | not joined yet | planned | `srvhome` (repo scaffolded, not deployed) |
 | `BIRD` | `BdRBirdDetector` | Raspberry Pi, RPi OS Lite, 4GB | `192.168.1.187` | not on tailnet | no | app (`bdrbirddetector.local`) |
+| `RatsNest` | `RatsNest` | Home Assistant Green appliance, Home Assistant OS | `10.10.10.100` | not on tailnet | no | Home Assistant (`ratsnest.local:8123`) |
 
 `DEV` is the **dev host** — every repo is authored here and pushed to
 GitHub from here; every other box only pulls.
@@ -62,7 +64,11 @@ BdRDev checkout. `BdRDev` still owns the fleet WebUI standard
 
 ### `DUNGEON` — `BdRPiSrvDungeon`
 
-Not provisioned. Will host `BdRDungeon`.
+Hardware not provisioned yet. LAN address `10.10.10.30` reserved
+2026-09-15. Will host `BdRDungeon`. The `bDotRad/BdRPiSrvDungeon` config
+repo is scaffolded (mirrors `BdRPiSrvAMI`: `srvhome/`, nginx, TLS,
+tailscale, `BdRPiSrvDungeon-PROVISION.md`) but nothing is deployed to a
+physical box yet.
 
 ### `BIRD` — `BdRBirdDetector`
 
@@ -70,6 +76,16 @@ Runs the edge detection pipeline (`edge/` in the `BdRBirdDetector` repo).
 Pull-only from GitHub, pushes to Firebase. No Claude Code on the box.
 **Unreachable from the rest of the fleet** — foreign subnet
 (`192.168.1.0/24`), not on the tailnet.
+
+### `RatsNest`
+
+| what | handle | URL(s) | status |
+|---|---|---|---|
+| Home Assistant | — | `http://ratsnest.local:8123` | live |
+
+A Home Assistant Green appliance running Home Assistant OS — not a Pi
+BdRDev provisioned, no Claude Code, no repo/project of its own. Not on
+the tailnet; reachable on the LAN at `10.10.10.100` / `ratsnest.local`.
 
 ## SSH matrix
 
@@ -96,6 +112,7 @@ write an Action block for Brad ([`Requests.md`](Requests.md)).
 | `BdRBirdDetector` | `Bird` | `DEV` | `BIRD` (pull) | `BdRBirdDetector` | SQLite on box + Firebase |
 | `BdRWebGUIDev` | `WebGUI` | `DEV` | `DEV` | `BdRWebGUIDev` | none |
 | `BdRPiSrvAMI` | `AMI-cfg` | `DEV` | `AMI` (pull, as `~/projects/BdRPiAMI/`) | `BdRPiSrvAMI` | SQLite `srvhome.db` |
+| `BdRPiSrvDungeon` | `Dungeon-cfg` | `DEV` | `DUNGEON` (pull, once provisioned) | `BdRPiSrvDungeon` | none |
 | `BdRVSrvDev` | `DEV-cfg` | `DEV` | `DEV` | *(check repo)* | none |
 | `BdRImpSys` | `ImpSys` | `DEV` | `AMI` (checkout only) | `BdRImpSys` | none yet |
 
@@ -106,8 +123,6 @@ of the next request that touches them:
 
 - `projects.BdRIS` has `exists_flag = false`, but `~/projects/BdRImpSys`
   exists on `AMI`. Rename the row to `BdRImpSys`, set `exists_flag`.
-- `projects.BdRDungeon.runs_on_server_id` is `null` despite
-  `BdRPiSrvDungeon` (`servers.id 59`) existing. Point it there.
 - `servers` has no column for **what each box serves at `/`** or for the
   **handle** — both are only in this file / `Naming.md` until the
   `rFleetMap` schema change lands.

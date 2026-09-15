@@ -26,8 +26,9 @@ piece of work. This doc is about what to *call* things in prose and data.
 |---|---|---|---|---|---|
 | `DEV` | `BdRPiSrvDev` | `bdrpisrvdev` | `10.10.8.11` | `bdrpisrvdev.tail0ed3f6.ts.net` / `100.116.147.74` | BdRDev *(as a host)*, BdRVSrvDev, BdRSrvDev, "the dev box", `bdrdev.local` |
 | `AMI` | `BdRPiSrvAMI` | `BdRPiSrvAMI` | `10.10.10.20` | `bdrpisrvami.tail0ed3f6.ts.net` / `100.86.25.88` | BdRPiAMI *(SSH alias only — see note)*, BdRSrvAMI, PlanBdRadServer, "the Pi", `bdrpiami.local` |
-| `DUNGEON` | `BdRPiSrvDungeon` | *(not provisioned)* | — | — | BdRSrvDungeon |
+| `DUNGEON` | `BdRPiSrvDungeon` | `BdRPiSrvDungeon` *(hardware not provisioned yet)* | `10.10.10.30` | *(not joined yet)* | BdRSrvDungeon |
 | `BIRD` | `BdRBirdDetector` | `bdrbirddetector` | `192.168.1.187` | *(not on tailnet)* | BdRadBirdDetector, "the bird pi" |
+| `RatsNest` | `RatsNest` | `ratsnest` | `10.10.10.100` | *(not on tailnet)* | — |
 
 `BdRPiAMI` survives in exactly two places for historical reasons and
 nowhere else: the `~/.ssh/config` alias on DEV (`ssh BdRPiAMI`) and the
