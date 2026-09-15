@@ -15,9 +15,10 @@ reach each other.** Names follow [`Naming.md`](Naming.md).
 > **and** this file in the same request (see
 > [`Requests.md`](Requests.md) § "Keeping the fleet map current").
 >
-> Last verified by hand: **2026-09-15** (`DUNGEON`/`BdRPiSrvDungeon`: LAN
-> `10.10.10.30` reserved, config repo scaffolded — hardware still not
-> provisioned).
+> Last verified by hand: **2026-09-16** (`DUNGEON`/`BdRPiSrvDungeon`:
+> hardware provisioned — Raspberry Pi 5, Debian 13 (trixie), aarch64,
+> LAN `10.10.10.30`, tailnet joined. `BdRatsNest` deployed and live
+> there, port `8440`).
 
 ## Boxes
 
@@ -25,7 +26,7 @@ reach each other.** Names follow [`Naming.md`](Naming.md).
 |---|---|---|---|---|---|---|
 | `DEV` | `BdRPiSrvDev` | Raspberry Pi, Ubuntu Server, 8GB | `10.10.8.11` | `bdrpisrvdev.tail0ed3f6.ts.net` / `100.116.147.74` | yes (scheduler + CloudCLI) | BdRDev dashboard |
 | `AMI` | `BdRPiSrvAMI` | Raspberry Pi, 8GB | `10.10.10.20` | `bdrpisrvami.tail0ed3f6.ts.net` / `100.86.25.88` | yes | `srvhome` |
-| `DUNGEON` | `BdRPiSrvDungeon` | hardware not provisioned | `10.10.10.30` | not joined yet | planned | `srvhome` (repo scaffolded, not deployed) |
+| `DUNGEON` | `BdRPiSrvDungeon` | Raspberry Pi 5, Debian 13 (trixie), aarch64 | `10.10.10.30` | `bdrpisrvdungeon.tail0ed3f6.ts.net` / `100.73.131.60` | not yet | `srvhome` (repo scaffolded, not deployed) |
 | `BIRD` | `BdRBirdDetector` | Raspberry Pi, RPi OS Lite, 4GB | `192.168.1.187` | not on tailnet | no | app (`bdrbirddetector.local`) |
 | `RatsNest` | `RatsNest` | Home Assistant Green appliance, Home Assistant OS | `10.10.10.100` | not on tailnet | no | Home Assistant (`ratsnest.local:8123`) |
 
@@ -64,11 +65,29 @@ BdRDev checkout. `BdRDev` still owns the fleet WebUI standard
 
 ### `DUNGEON` — `BdRPiSrvDungeon`
 
-Hardware not provisioned yet. LAN address `10.10.10.30` reserved
-2026-09-15. Will host `BdRDungeon`. The `bDotRad/BdRPiSrvDungeon` config
-repo is scaffolded (mirrors `BdRPiSrvAMI`: `srvhome/`, nginx, TLS,
-tailscale, `BdRPiSrvDungeon-PROVISION.md`) but nothing is deployed to a
-physical box yet.
+Provisioned 2026-09-16: Raspberry Pi 5, Debian 13 (trixie), aarch64.
+Hostname is now `BdRPiSrvDungeon` (was briefly `BdRpi` mid-setup — don't
+use that alias). LAN `10.10.10.30` (moved once during setup off an
+initial `10.10.8.19`; `.30` is current), login user `bdr`, tailnet
+`bdrpisrvdungeon.tail0ed3f6.ts.net` / `100.73.131.60`.
+
+| what | handle | URL(s) | status |
+|---|---|---|---|
+| BdRatsNest | `BdRatsNest` | `http://10.10.10.30:8440` (LAN) · `http://100.73.131.60:8440` (tailnet) | **live**, but manually started (`./run.sh`, plain Flask dev server) — **not a systemd service**, won't survive a reboot |
+
+The `bDotRad/BdRPiSrvDungeon` config repo is scaffolded (mirrors
+`BdRPiSrvAMI`: `srvhome/`, nginx, TLS, tailscale,
+`BdRPiSrvDungeon-PROVISION.md`) but `srvhome` itself isn't deployed
+there yet — nothing currently serves `/` on this box. `BdRDungeon` (the
+other project slated for this box) also isn't deployed yet, just its
+server row is linked.
+
+BdRatsNest is a **mock/placeholder device grid** — no real Shelly/ESP32
+integration yet, see the project's own `CLAUDE.md`. It's authored on
+`DEV` and pulled onto `DUNGEON` via its own read-only GitHub deploy key
+`bdrpisrvdungeon_to_bdratsnestgit` (generated on the `DUNGEON` box
+itself, registered on the private `bDotRad/BdRatsNest` repo — a new key,
+doesn't replace anything).
 
 ### `BIRD` — `BdRBirdDetector`
 
@@ -92,6 +111,7 @@ the tailnet; reachable on the LAN at `10.10.10.100` / `ratsnest.local`.
 | from → to | command | headless? | notes |
 |---|---|---|---|
 | `DEV` → `AMI` | `ssh BdRPiAMI` (`bdr@10.10.10.20`) | ✅ yes | LAN key `bdrdev_to_bdrpiamiserver`. Use the LAN alias/IP, **not** the `*.ts.net` name. |
+| `DEV` → `DUNGEON` | `ssh BdRPiDungeon` (`bdr@10.10.10.30`) | ✅ yes | LAN key `bdrdev_to_bdrpidungeonserver`, same pattern as `AMI`. Use the LAN alias/IP, **not** the `*.ts.net` name. |
 | `DEV` → `BIRD` | — | ❌ | no key, foreign subnet, off tailnet |
 | `AMI` → anywhere | — | ❌ | `AMI` is a leaf; don't SSH out from it |
 | any → `DEV` | `ssh` as `bdr` | — | only one key trusted in `authorized_keys` |
@@ -108,11 +128,12 @@ write an Action block for Brad ([`Requests.md`](Requests.md)).
 | `BdRDev` | `DEV` | `DEV` | `DEV` | `BdRDev` (DEV pushes **and** pulls) | none |
 | `BdRAMAssist` | `AMAssist` | `DEV` | `AMI` (pull) | `BdRAMAssist` | shares PlanBdR's Supabase |
 | `PlanBdRad` | `PlanBdR` | `DEV` | `AMI` (pull) | `PlanBdRad` | Supabase on `AMI` |
-| `BdRDungeon` | `Dungeon` | `DEV` | `DUNGEON` (planned) | `BdRDungeon` | Supabase (planned) |
+| `BdRDungeon` | `Dungeon` | `DEV` | `DUNGEON` (planned — server provisioned, app not deployed yet) | `BdRDungeon` | Supabase (planned) |
+| `BdRatsNest` | `BdRatsNest` | `DEV` | `DUNGEON` (live, dev server) | `BdRatsNest` | none |
 | `BdRBirdDetector` | `Bird` | `DEV` | `BIRD` (pull) | `BdRBirdDetector` | SQLite on box + Firebase |
 | `BdRWebGUIDev` | `WebGUI` | `DEV` | `DEV` | `BdRWebGUIDev` | none |
 | `BdRPiSrvAMI` | `AMI-cfg` | `DEV` | `AMI` (pull, as `~/projects/BdRPiAMI/`) | `BdRPiSrvAMI` | SQLite `srvhome.db` |
-| `BdRPiSrvDungeon` | `Dungeon-cfg` | `DEV` | `DUNGEON` (pull, once provisioned) | `BdRPiSrvDungeon` | none |
+| `BdRPiSrvDungeon` | `Dungeon-cfg` | `DEV` | `DUNGEON` (pull) | `BdRPiSrvDungeon` | none |
 | `BdRVSrvDev` | `DEV-cfg` | `DEV` | `DEV` | *(check repo)* | none |
 | `BdRImpSys` | `ImpSys` | `DEV` | `AMI` (checkout only) | `BdRImpSys` | none yet |
 
@@ -129,3 +150,17 @@ of the next request that touches them:
 - `fleet_meta.notes` is a stale prose blob (mentions the retired
   `192.168.100.x` VM, "hostname still BdRDev", etc.). Replace with a
   short pointer to this file.
+
+## Naming note: two "RatsNest"s, temporarily
+
+`BdRatsNest` (new project, this box's `DUNGEON` deploy) is built to
+**replace** the existing `RatsNest` Home Assistant Green appliance
+(separate box, `10.10.10.100`, see the `RatsNest` row above) — Brad
+found full Home Assistant overkill and is retiring that box once
+`BdRatsNest` takes over, per `BdRatsNest/Description.md`. Until that
+retirement happens, both exist at once, so per `Naming.md`'s
+one-canonical-name rule the **project** keeps the unabbreviated handle
+`BdRatsNest` (not shortened to `RatsNest`) specifically to avoid
+colliding with the appliance box's handle `RatsNest`. When the appliance
+is decommissioned, revisit whether the project should absorb the shorter
+handle.

@@ -26,7 +26,7 @@ piece of work. This doc is about what to *call* things in prose and data.
 |---|---|---|---|---|---|
 | `DEV` | `BdRPiSrvDev` | `bdrpisrvdev` | `10.10.8.11` | `bdrpisrvdev.tail0ed3f6.ts.net` / `100.116.147.74` | BdRDev *(as a host)*, BdRVSrvDev, BdRSrvDev, "the dev box", `bdrdev.local` |
 | `AMI` | `BdRPiSrvAMI` | `BdRPiSrvAMI` | `10.10.10.20` | `bdrpisrvami.tail0ed3f6.ts.net` / `100.86.25.88` | BdRPiAMI *(SSH alias only — see note)*, BdRSrvAMI, PlanBdRadServer, "the Pi", `bdrpiami.local` |
-| `DUNGEON` | `BdRPiSrvDungeon` | `BdRPiSrvDungeon` *(hardware not provisioned yet)* | `10.10.10.30` | *(not joined yet)* | BdRSrvDungeon |
+| `DUNGEON` | `BdRPiSrvDungeon` | `BdRPiSrvDungeon` | `10.10.10.30` | `bdrpisrvdungeon.tail0ed3f6.ts.net` / `100.73.131.60` | BdRSrvDungeon, `BdRpi` *(transient mid-setup hostname, 2026-09-15/16 — never use)* |
 | `BIRD` | `BdRBirdDetector` | `bdrbirddetector` | `192.168.1.187` | *(not on tailnet)* | BdRadBirdDetector, "the bird pi" |
 | `RatsNest` | `RatsNest` | `ratsnest` | `10.10.10.100` | *(not on tailnet)* | — |
 
@@ -44,6 +44,7 @@ Canonical = the repo directory name. Handle is for tables and prose.
 | `AMAssist` | `BdRAMAssist` | bulk asset-management data prep, feeds PlanBdR | `AMI` |
 | `PlanBdR` | `PlanBdRad` | preventative-maintenance plan generator | `AMI` |
 | `Dungeon` | `BdRDungeon` | "the Dungeon" hub — talks to ESP32 field devices | `DUNGEON` *(planned)* |
+| `BdRatsNest` | `BdRatsNest` | home-automation hub (Shelly now, ESP32 planned) — replaces the `RatsNest` Home Assistant appliance; kept unabbreviated to avoid colliding with that box's handle until it's decommissioned, see `FLEET.md` | `DUNGEON` |
 | `Bird` | `BdRBirdDetector` | distributed acoustic bird detection / localization | `BIRD` |
 | `WebGUI` | `BdRWebGUIDev` | one-page web-GUI sandbox, dev only | `DEV` |
 | `AMI-cfg` | `BdRPiSrvAMI` | server-config repo for the AMI box (nginx / TLS / provisioning) + **the canonical home of `srvhome`** (`srvhome/`) | `AMI` (pull-only) |
