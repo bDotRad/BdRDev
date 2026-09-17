@@ -21,8 +21,10 @@ itself; it just stops scheduling.
 - [_Instructions/Standards.md](_Instructions/Standards.md) — the
   two-layer standards system: `_Instructions/*` here is the canonical
   fleet-wide layer (incl. [WebUI.md](_Instructions/WebUI.md) — look &
-  feel, 7-char-SHA versioning, the Edit/Save/Cancel table pattern);
-  each project's own docs are the override layer
+  feel, 7-char-SHA versioning, the Edit/Save/Cancel table pattern;
+  [HTTPS.md](_Instructions/HTTPS.md) — the two-front-door TLS standard,
+  tailnet via `tailscale serve`, LAN via a standalone self-signed cert,
+  no fleet CA); each project's own docs are the override layer
 - [_Instructions/FLEET.md](_Instructions/FLEET.md) +
   [Naming.md](_Instructions/Naming.md) +
   [Guardrails.md](_Instructions/Guardrails.md) — the fleet map, the

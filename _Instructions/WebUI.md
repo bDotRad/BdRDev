@@ -158,6 +158,35 @@ favicon**, not just the in-page header image above:
 a one-line addition to `<head>`; no separate asset or route is needed
 since the logo file already ships for the header.
 
+## App-status tile
+
+The per-app status tile `srvhome` renders on its **App status** tab
+(one tile per hosted app, plus the box itself — `render_status_tile()`
+in `srvhome/srvhome.py`) follows this pattern everywhere it appears:
+
+- **HEAD/branch row** (`HEAD <sha> · built <sha> branch <name>`) never
+  ends in a link to the app's own local URL (`bdramassist.local`,
+  `planbdrad.local`, …). That link added noise without being something
+  anyone actually clicks from a status tile — drop it. If a local URL
+  needs surfacing at all, it belongs in the app's own server-info /
+  metadata view, not appended to this row.
+- **Update output** (the captured `git pull` / rebuild log, `<pre
+  data-role=outpre>`) renders inside a **collapsible `<details>`,
+  collapsed by default** — the same pattern already used for the
+  tile's "deploy history" section (`<details class=hist>`) right below
+  it, not an always-open `<pre>`. Summary text: `update output`.
+  Collapsed, only the status line + meta line (`up to date · GitHub
+  checked 2m ago · HEAD …`) are visible; expand to read the full
+  captured log. A `<details>` element's content still updates live via
+  the poll JS while collapsed, so this is purely a default-visibility
+  change, not a behaviour change.
+
+Reference implementation: `srvhome/srvhome.py` — `render_statusbox()` /
+`render_status_tile()` (identical file in both the `BdRPiSrvAMI` and
+`BdRPiSrvDungeon` repos). A static mock of the pattern also lives on
+**BdRWebGUIDev showcase → Templates → App-Status Tile**, the same way
+the header block's explorations live under Templates → Logo & Version.
+
 ## Editing tables — the standard pattern
 
 Any table whose cells are user-editable follows this, exactly:
