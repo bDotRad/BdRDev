@@ -69,12 +69,24 @@ safety classifier blocking a risky action (a live-service restart,
    write actions and questions back into a request file") -- exact
    commands with a description per command for anything Brad must run,
    numbered options for anything he must decide.
-3. End your turn. Once nothing in `_Requests/` is `READY`, the scheduler
+3. **Say what you need in your own last chat message too, not just in
+   the file.** Brad mostly checks in via CloudCLI (a session/transcript
+   viewer, not this dashboard), so your plain-English final message —
+   "I need X, see the Action block in `rFoo.md`" — is what he's likely
+   to actually read; don't make the file the only place the question
+   exists. Keep it short: state what's blocked and point at the file,
+   don't repeat the whole Action/Question block verbatim in the chat.
+4. End your turn. Once nothing in `_Requests/` is `READY`, the scheduler
    hibernates you automatically after its grace period — no need to
-   stay alive waiting for an answer. The dashboard already flashes a
-   "Waiting Input" button whenever a request is `WAITING RESPONSE`, so
-   Brad sees the question next time he checks, answers it in the file,
-   and flips it back to `READY` to wake a fresh session.
+   stay alive waiting for an answer. The dashboard also flashes a
+   "Waiting Input" button whenever a request is `WAITING RESPONSE`
+   (2026-09-17: confirmed this is a pure file-marker scrape, decoupled
+   from any live session — don't assume it, or its absence, means
+   anything about whether your last chat message got through). Brad
+   answers in the file and flips it back to `READY` to wake a fresh
+   session — remember that's a **brand-new** process with no memory of
+   this one, so the file has to be self-contained regardless of what
+   you said in chat.
 
 ## What this means for how you should work
 
