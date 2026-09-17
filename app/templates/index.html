@@ -60,6 +60,16 @@
     font-size: 14px; color: #c7d0dc; margin-left: 2px;
   }
   .site-header.behind .sh-ver { color: var(--waiting); }
+  .sh-status { display: flex; align-items: center; gap: 8px; margin-left: 4px; }
+  .sh-pill {
+    font: inherit; font-size: 11px; font-weight: 700; line-height: 1.4;
+    cursor: pointer; border: none; border-radius: 5px; padding: 1px 8px;
+    color: #0f1115; background: var(--processing);
+  }
+  .sh-pill.busy { background: var(--waiting); cursor: default; }
+  .sh-pill:hover:not(.busy) { filter: brightness(1.08); }
+  .sh-pill-msg { font-size: 12px; color: var(--text-dim); }
+  .sh-pill-msg.error { color: var(--restart-alert); }
   h1 { font-size: 20px; font-weight: 600; margin: 0; color: var(--title-color); }
   h2 { font-size: 14px; font-weight: 600; margin: 0 0 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
   #banner {
@@ -249,6 +259,10 @@
   .eco2-table td.eco2-y { color: var(--processing); }
   .eco2-table td.eco2-n { color: var(--text-dim); }
   .eco2-table tr.eco2-unprov td { opacity: 0.6; }
+  .eco2-table tr.eco2-servergroup td {
+    background: #0b0d11; color: var(--text-dim); font-weight: 700;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em;
+  }
   .eco2-table code {
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px;
     background: #0b0d11; border: 1px solid var(--card-border); border-radius: 4px; padding: 1px 5px;
@@ -664,6 +678,10 @@
     <div class="sh-stack">
       <span class="sh-name"><b>BDR</b> AI GUI</span>
       <span class="sh-ver">{{ version }}</span>
+      <div class="sh-status">
+        <button class="sh-pill" id="selfPullPill" onclick="checkAndPullSelf(this)" title="git fetch + fast-forward pull this dashboard's own repo">Check &amp; Pull</button>
+        <span class="sh-pill-msg" id="selfPullMsg"></span>
+      </div>
     </div>
   </div>
 
@@ -862,8 +880,8 @@
       <button class="btn secondary" type="button" data-eco="addrow" data-addrow="projects" onclick="ecoAddRow('projects')" style="display:none;margin-top:8px;">+ Project</button>
 
       <div id="eco-edit-hint" style="display:none;">
-        Click a text cell to edit it; click a Y/N cell to toggle. Runs on /
-        Database / Status are dropdowns while editing; type a URL in a Web
+        Click a text cell to edit it; click a Y/N cell to toggle. Database /
+        Status are dropdowns while editing; type a URL in a Web
         cell. Saved to Supabase when reachable, otherwise to
         <code>state/ecosystem.json</code>.
       </div>
@@ -1204,6 +1222,34 @@ function renderCardRequests(project, items) {
     </li>
   `).join('');
   return `<ul class="req-mini-list">${rows}</ul>`;
+}
+
+async function checkAndPullSelf(pill) {
+  const msg = document.getElementById('selfPullMsg');
+  pill.disabled = true;
+  pill.classList.add('busy');
+  pill.textContent = 'checking…';
+  msg.classList.remove('error');
+  msg.textContent = '';
+  try {
+    const res = await fetch('/api/self/git/check_and_pull', { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) {
+      msg.classList.add('error');
+      msg.textContent = data.error || 'pull failed';
+    } else if (data.pulled) {
+      msg.textContent = `pulled ${data.before} → ${data.sha} — restart to apply`;
+    } else {
+      msg.textContent = 'up to date';
+    }
+  } catch (e) {
+    msg.classList.add('error');
+    msg.textContent = 'request failed';
+  } finally {
+    pill.disabled = false;
+    pill.classList.remove('busy');
+    pill.textContent = 'Check & Pull';
+  }
 }
 
 async function markRequestReady(btn, project, name) {
@@ -2012,31 +2058,57 @@ function renderEcoServers() {
 function renderEcoProjects() {
   const table = document.getElementById('eco-projects-table');
   if (!table) return;
-  const serverNames = ecoData.servers.map(s => s.name).filter(Boolean);
   const dbOptions = (ecoOptions.database || ['none', 'SQLite', 'Supabase']).concat(
     ecoData.projects.map(p => p.name).filter(Boolean).map(n => `shares:${n}`)
   );
   const statusOptions = ecoOptions.status || ['planned', 'building', 'deployed', 'live'];
+  const colCount = 2 + ECO_ROLES.length + 4 + (ecoEditing ? 1 : 0);
   const head = `<thead><tr>
       <th>Name</th><th>Nick Name</th>
       ${ECO_ROLES.map(r => `<th>${r[1]}</th>`).join('')}
-      <th>Runs on</th><th>Local URL</th><th>Tailscale URL</th><th>Database</th><th>Status</th>
+      <th>Local URL</th><th>Tailscale URL</th><th>Database</th><th>Status</th>
       ${ecoEditing ? '<th></th>' : ''}
     </tr></thead>`;
-  const rows = ecoData.projects.map((p, i) => {
+
+  const projectRow = (p, i) => {
     const roles = p.roles || [];
     return `<tr>
       ${ecoTextCell('pi', i, 'name', p.name, 'eco2-mono')}
       ${ecoTextCell('pi', i, 'nickname', p.nickname)}
       ${ECO_ROLES.map(r => ecoYnCell('pi', i, 'role:' + r[0], roles.indexOf(r[0]) !== -1)).join('')}
-      ${ecoSelectCell('pi', i, 'runs_on', p.runs_on, serverNames)}
       ${ecoWebCell('pi', i, 'local_url', p.local_url)}
       ${ecoWebCell('pi', i, 'ts_url', p.ts_url)}
       ${ecoSelectCell('pi', i, 'database', p.database, dbOptions)}
       ${ecoSelectCell('pi', i, 'status', p.status, statusOptions)}
       ${ecoEditing ? `<td><button type="button" class="eco-rm" onclick="ecoRemoveRow('projects', ${i})">✕</button></td>` : ''}
     </tr>`;
-  }).join('');
+  };
+  const groupRow = label =>
+    `<tr class="eco2-servergroup"><td colspan="${colCount}">${escapeHtml(label)}</td></tr>`;
+
+  // Group by runs_on, ordered like the Ecosystem Tree: server order from
+  // ecoData.servers, then a trailing group for projects whose runs_on
+  // doesn't match any known server (including blank, e.g. a freshly
+  // added row).
+  const byServer = new Map();
+  ecoData.servers.forEach(s => { if (s.name) byServer.set(s.name, []); });
+  const unplaced = [];
+  ecoData.projects.forEach((p, i) => {
+    (byServer.has(p.runs_on) ? byServer.get(p.runs_on) : unplaced).push(i);
+  });
+
+  let rows = '';
+  ecoData.servers.forEach(s => {
+    const idxs = byServer.get(s.name);
+    if (!idxs || !idxs.length) return;
+    rows += groupRow(s.name);
+    rows += idxs.map(i => projectRow(ecoData.projects[i], i)).join('');
+  });
+  if (unplaced.length) {
+    rows += groupRow('Unassigned');
+    rows += unplaced.map(i => projectRow(ecoData.projects[i], i)).join('');
+  }
+
   table.innerHTML = head + '<tbody>' + rows + '</tbody>';
   wireEcoTable(table);
 }

@@ -426,6 +426,14 @@ def api_project_git_commit(project):
     return jsonify(result)
 
 
+@app.route("/api/self/git/check_and_pull", methods=["POST"])
+def api_self_git_check_and_pull():
+    result = common.self_git_check_and_pull()
+    if result.get("pulled"):
+        common.log_event("BdRDev", "git_pull", detail=f"{result.get('before')} -> {result.get('sha')}")
+    return jsonify(result)
+
+
 @app.route("/api/log")
 def api_log():
     project = request.args.get("project") or None
