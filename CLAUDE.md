@@ -23,6 +23,13 @@ itself; it just stops scheduling.
   fleet-wide layer (incl. [WebUI.md](_Instructions/WebUI.md) — look &
   feel, 7-char-SHA versioning, the Edit/Save/Cancel table pattern);
   each project's own docs are the override layer
+- [_Instructions/FLEET.md](_Instructions/FLEET.md) +
+  [Naming.md](_Instructions/Naming.md) +
+  [Guardrails.md](_Instructions/Guardrails.md) — the fleet map, the
+  canonical name/handle for every box and project, and the hard rules
+  for unattended sessions (never repoint `/`, tear down a service, or
+  reach outside your project). Each box also has a generated
+  `~/projects/CLAUDE.md` with its own identity + guardrails.
 - `_Requests/_Archive/` — dated writeups of every request processed so
   far; check here before re-solving something already handled
 

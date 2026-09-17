@@ -16,13 +16,23 @@ working in any project should just know they exist and apply.
 | doc | covers |
 |---|---|
 | [`Standards.md`](Standards.md) | this two-layer model |
+| [`Naming.md`](Naming.md) | the one canonical name + short handle for every box and project; aliases never to use |
+| [`FLEET.md`](FLEET.md) | the fleet map — boxes, what runs where, the SSH matrix |
+| [`Guardrails.md`](Guardrails.md) | what an unattended session must never do on its own (destructive / infra actions → Action block) |
+| [`SessionScope.md`](SessionScope.md) | how to size and run a session; context as working memory |
 | [`WebUI.md`](WebUI.md) | web look & feel, versioning (7-char SHA), the table-editing Edit/Save/Cancel pattern |
 | [`ProjectSetup.md`](ProjectSetup.md) | the standard project folder shape; "Setup Project" |
-| [`Requests.md`](Requests.md) | the `_Requests/` intake + archive convention |
+| [`Requests.md`](Requests.md) | the `_Requests/` intake + archive convention; the fleet-map-update step |
 | [`BdRDev.md`](BdRDev.md) | scheduler wake/kill orchestration (copied into other projects' CLAUDE.md context) |
-| [`SSH.md`](SSH.md) | fleet SSH key naming |
+| [`SSH.md`](SSH.md) | fleet SSH key naming; Tailscale-SSH vs LAN-key |
 | [`AppServerSync.md`](AppServerSync.md) | funnelling app-server edits back through the dev box |
-| server provisioning | worked example: `~/projects/BdRPiAMI-PROVISION.md`; fleet table in the `infra-target-servers` memory |
+| server provisioning | worked example: `~/projects/BdRPiAMI-PROVISION.md` |
+
+Each fleet box also carries a generated `~/projects/CLAUDE.md` (one level
+above the repos) stating that box's identity, what it serves at `/`, its
+SSH reach, and the guardrails — so every session inherits it from cwd.
+Canonical content is derived from `Naming.md` + `FLEET.md`; the AMI box's
+tracked copy is `BdRPiSrvAMI/projects-root-CLAUDE.md`.
 
 **Layer 2 — project-specific (each project's own
 `CLAUDE.md` + `_Instructions/` + `Description.md`).**

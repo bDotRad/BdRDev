@@ -118,6 +118,30 @@ a name collision waiting to happen -- see the note below).
   within the same minute will still just sort by slug relative to each
   other, which is an accepted edge case.
 
+## Keeping the fleet map current
+
+Applies in **every** project, not just BdRDev. If a request changed a
+**deployment fact** — a new app or project, a changed URL / port /
+hostname, a project moved to a different box, a box provisioned, a
+service that now exists or is now live — then before you archive the
+request:
+
+1. Update the fleet **ecosystem data** — the self-hosted Supabase on
+   `DEV` (`servers`, `projects`, `project_roles`, `server_software`).
+   Easiest path is the BdRDev dashboard's Ecosystem editor; if it needs
+   a schema change, that's a `supabase-sql-expert` / migration job.
+2. Update `BdRDev/_Instructions/FLEET.md` so the map matches (until the
+   generator lands it's maintained by hand).
+3. Do **not** touch `BdRDev/state/ecosystem.json` — it's a read cache
+   Supabase overwrites.
+
+Use the canonical name / handle from `BdRDev/_Instructions/Naming.md` for
+every box and project — never an alias, never a `nickname` string.
+
+This is the step that was being skipped, which is why the Ecosystem page
+drifted. Treat "map updated" as part of "request done", the same as
+"committed and pushed".
+
 ## When a request can't be finished
 
 If a request genuinely can't be completed in one pass -- blocked on a

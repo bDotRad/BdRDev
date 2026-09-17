@@ -25,6 +25,25 @@ write new features or fix bugs yourself.
   document a decision's rationale unless it's genuinely non-obvious
   and would otherwise be lost.
 
+## The fleet map (any project)
+
+If work in *any* project changed a **deployment fact** — a new app, a
+changed URL or port, a new box, a service moved between boxes, a project
+that now exists / is now deployed — that fact lives in the fleet
+ecosystem data, not just this project's docs. Keeping it current is part
+of finishing the request:
+
+1. Update the self-hosted Supabase on `DEV` (`servers`, `projects`,
+   `project_roles`, `server_software`) — via the dashboard's Ecosystem
+   editor, or hand it to `supabase-sql-expert` if it needs DDL.
+2. Regenerate / hand-update `BdRDev/_Instructions/FLEET.md` to match.
+3. Never edit `BdRDev/state/ecosystem.json` directly — it is a read
+   cache that Supabase overwrites.
+
+See `BdRDev/_Instructions/Requests.md` § "Keeping the fleet map current"
+and `BdRDev/_Instructions/FLEET.md`. Use canonical names / handles from
+`BdRDev/_Instructions/Naming.md` — never an alias.
+
 ## What you don't do
 
 - Don't change application code or schema to make a doc "true" --
