@@ -1438,55 +1438,6 @@ def git_commit_and_push(project, message):
         return {"ok": False, "error": str(e)}
 
 
-def self_git_check_and_pull():
-    """git fetch + fast-forward-only pull for BdRDev's own checkout --
-    backs the header's "Check & Pull" button. Refuses if the working
-    tree is dirty or the pull isn't a clean fast-forward, so it can't
-    clobber a concurrent local session's in-progress edits or invent a
-    merge commit. The running Flask process still needs a restart to
-    pick up any pulled code (see BdRDev/CLAUDE.md -- no autoreload)."""
-    repo_dir = APP_DIR.parent
-    try:
-        status = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=repo_dir, capture_output=True, text=True, timeout=5,
-        )
-        if status.returncode != 0:
-            return {"ok": False, "error": status.stderr.strip() or "git status failed"}
-        if status.stdout.strip():
-            return {"ok": False, "error": "Working tree has uncommitted changes -- not pulling."}
-
-        before = subprocess.run(
-            ["git", "rev-parse", "--short=7", "HEAD"],
-            cwd=repo_dir, capture_output=True, text=True, timeout=5,
-        ).stdout.strip()
-
-        fetch = subprocess.run(
-            ["git", "fetch", "origin"],
-            cwd=repo_dir, capture_output=True, text=True, timeout=20,
-        )
-        if fetch.returncode != 0:
-            return {"ok": False, "error": fetch.stderr.strip() or "git fetch failed"}
-
-        pull = subprocess.run(
-            ["git", "pull", "--ff-only"],
-            cwd=repo_dir, capture_output=True, text=True, timeout=20,
-        )
-        if pull.returncode != 0:
-            return {"ok": False, "error": pull.stderr.strip() or pull.stdout.strip() or "git pull failed"}
-
-        after = subprocess.run(
-            ["git", "rev-parse", "--short=7", "HEAD"],
-            cwd=repo_dir, capture_output=True, text=True, timeout=5,
-        ).stdout.strip()
-
-        if after == before:
-            return {"ok": True, "pulled": False, "sha": after}
-        return {"ok": True, "pulled": True, "before": before, "sha": after}
-    except (subprocess.TimeoutExpired, OSError) as e:
-        return {"ok": False, "error": str(e)}
-
-
 _APP_VERSION_CACHE = None
 
 

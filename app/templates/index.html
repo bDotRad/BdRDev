@@ -60,16 +60,14 @@
     font-size: 14px; color: #c7d0dc; margin-left: 2px;
   }
   .site-header.behind .sh-ver { color: var(--waiting); }
-  .sh-status { display: flex; align-items: center; gap: 8px; margin-left: 4px; }
-  .sh-pill {
+  .sh-restart-btn {
     font: inherit; font-size: 11px; font-weight: 700; line-height: 1.4;
-    cursor: pointer; border: none; border-radius: 5px; padding: 1px 8px;
-    color: #0f1115; background: var(--processing);
+    cursor: pointer; border: none; border-radius: 5px; padding: 2px 9px;
+    color: #fff; background: var(--restart-alert); margin-left: 4px;
   }
-  .sh-pill.busy { background: var(--waiting); cursor: default; }
-  .sh-pill:hover:not(.busy) { filter: brightness(1.08); }
-  .sh-pill-msg { font-size: 12px; color: var(--text-dim); }
-  .sh-pill-msg.error { color: var(--restart-alert); }
+  .sh-restart-btn.hidden { display: none; }
+  .sh-restart-btn:hover { filter: brightness(1.1); }
+  .sh-restart-btn:disabled { opacity: 0.6; cursor: default; }
   h1 { font-size: 20px; font-weight: 600; margin: 0; color: var(--title-color); }
   h2 { font-size: 14px; font-weight: 600; margin: 0 0 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
   #banner {
@@ -677,11 +675,9 @@
     <img class="sh-logo" src="/static/rat-logo.png" alt="">
     <div class="sh-stack">
       <span class="sh-name"><b>BDR</b> AI GUI</span>
-      <span class="sh-ver">{{ version }}</span>
-      <div class="sh-status">
-        <button class="sh-pill" id="selfPullPill" onclick="checkAndPullSelf(this)" title="git fetch + fast-forward pull this dashboard's own repo">Check &amp; Pull</button>
-        <span class="sh-pill-msg" id="selfPullMsg"></span>
-      </div>
+      <span class="sh-ver">{{ version }}
+        <button class="sh-restart-btn hidden" id="headerRestartBtn" onclick="triggerRestartBoth()" title="Restart both the dashboard and scheduler services">Restart All</button>
+      </span>
     </div>
   </div>
 
@@ -1222,34 +1218,6 @@ function renderCardRequests(project, items) {
     </li>
   `).join('');
   return `<ul class="req-mini-list">${rows}</ul>`;
-}
-
-async function checkAndPullSelf(pill) {
-  const msg = document.getElementById('selfPullMsg');
-  pill.disabled = true;
-  pill.classList.add('busy');
-  pill.textContent = 'checking…';
-  msg.classList.remove('error');
-  msg.textContent = '';
-  try {
-    const res = await fetch('/api/self/git/check_and_pull', { method: 'POST' });
-    const data = await res.json();
-    if (!data.ok) {
-      msg.classList.add('error');
-      msg.textContent = data.error || 'pull failed';
-    } else if (data.pulled) {
-      msg.textContent = `pulled ${data.before} → ${data.sha} — restart to apply`;
-    } else {
-      msg.textContent = 'up to date';
-    }
-  } catch (e) {
-    msg.classList.add('error');
-    msg.textContent = 'request failed';
-  } finally {
-    pill.disabled = false;
-    pill.classList.remove('busy');
-    pill.textContent = 'Check & Pull';
-  }
 }
 
 async function markRequestReady(btn, project, name) {
@@ -3032,6 +3000,13 @@ function renderSchedulerStatus(state) {
   document.getElementById('admin-scheduler-restart-btn').disabled = (state === 'restarting');
 }
 
+function renderHeaderRestartBtn(needed) {
+  const btn = document.getElementById('headerRestartBtn');
+  btn.classList.toggle('hidden', !needed);
+  btn.disabled = (adminRestarting || schedulerRestarting);
+  btn.textContent = (adminRestarting || schedulerRestarting) ? 'Restarting…' : 'Restart All';
+}
+
 async function loadAdminStatus() {
   try {
     const res = await fetch('/api/admin/status');
@@ -3043,6 +3018,7 @@ async function loadAdminStatus() {
     if (!schedulerRestarting) {
       renderSchedulerStatus(!data.scheduler_running ? 'not_running' : (data.scheduler_needs_restart ? 'requires_restart' : 'running'));
     }
+    renderHeaderRestartBtn(data.needs_restart || data.scheduler_needs_restart);
   } catch (e) {
     if (adminRestarting) renderAdminStatus('restarting');
   }
@@ -3053,6 +3029,7 @@ async function triggerRestartBoth() {
 
   schedulerRestarting = true;
   renderSchedulerStatus('restarting');
+  renderHeaderRestartBtn(true);
   try {
     await fetch('/api/admin/restart_scheduler', { method: 'POST' });
   } catch (e) { /* ignore -- status poll below will reflect reality */ }
