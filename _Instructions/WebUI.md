@@ -144,6 +144,20 @@ version-checking, which not every app has. So:
 Building the check into an app that lacks one is a per-app follow-up,
 not part of adopting the header.
 
+### Favicon
+
+Every fleet web UI also sets `rat-logo.png` as the **browser-tab
+favicon**, not just the in-page header image above:
+
+```html
+<link rel="icon" type="image/png" href="/static/rat-logo.png">
+```
+
+(Adjust the path to wherever the app already serves the logo — e.g.
+`srvhome` serves it at `/logo.png` and links `href=logo.png`.) This is
+a one-line addition to `<head>`; no separate asset or route is needed
+since the logo file already ships for the header.
+
 ## Editing tables — the standard pattern
 
 Any table whose cells are user-editable follows this, exactly:
