@@ -1,4 +1,56 @@
-WAITING RESPONSE
+# srvhome → BdRPiSrvAMI ownership + redesign — verified deployed, 2026-09-17
+
+## What was done this pass
+
+The code + docs work (both repos, 2026-09-11) was already done and
+pushed per the request body below. This pass's job was just to verify
+Brad's Task 3 Action block (on `AMI`) — the part that needed `sudo`/a
+live restart this session can't run itself — actually landed, since the
+file had been flipped `WAITING RESPONSE` → `READY` with no note either
+way.
+
+Read-only checks over SSH to `AMI` (`BdRPiAMI`, LAN alias — no `sudo`,
+no restarts run from here):
+
+- `curl http://127.0.0.1:8610/healthz` → `ok`.
+- Page serves both `data-tab=status` and `data-tab=info` — confirms the
+  two-tab redesign (`644cf6a`) is live, not just committed.
+- `git log` on `~/projects/BdRPiAMI` shows the full redesign history up
+  through `59f245e` (favicon) and `b27ba1b` (tile links) — later commits
+  than what this request describes, so the checkout is current or
+  ahead, not stale.
+- Footer/tiles render as **BdRPiSrvAMI** (not "srvhome"), confirming
+  `2c3a3f4` is live.
+- The one `grep` hit for "Generated" on the page is the changelog prose
+  in the info tab describing *removal* of that sub-line, not the
+  sub-line itself — false alarm, header is clean.
+- `srvhome/` file mtimes (`hook.log` etc.) are from today, and
+  `install.sh` behavior (per-app hook wiring) matches what the Action
+  block asked for — so steps 2 and 3 (pull, restart, re-run installer)
+  were carried out.
+
+So Task 3's deploy steps (pull / restart / re-run `install.sh`) are
+confirmed done. **Task 3's OS-upgrade step was not** — `apt history.log`
+on `AMI` shows no `apt upgrade -y` since the partial one on 2026-09-09
+(`containerd.io` only); everything since then is routine
+`unattended-upgrade` runs for individual security packages. The 6
+originally-named packages, plus several more that have since become
+available, are still sitting un-upgraded. Split off as its own
+low-priority follow-up: **`rAMIRoutineUpdates.md`** (new, `WAITING
+RESPONSE`) — this request's core ask (ownership move + redesign) doesn't
+depend on it, so no reason to hold this one open for routine package
+maintenance.
+
+No fleet-map/Supabase changes needed here — the request's own "Still
+open" section already deferred that to `rFleetMap`, which exists
+separately and wasn't touched by this pass.
+
+Nothing in this repo (`BdRDev`) changed as part of this verification
+pass — no commit needed here beyond archiving this request.
+
+## Original request (verbatim)
+
+READY
 
 <!-- 2026-09-09 diagnostic writeup → 2026-09-11 built. Code + docs done
      and pushed (both repos). Only the Task 3 Action block (apt upgrade
