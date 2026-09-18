@@ -73,7 +73,7 @@ initial `10.10.8.19`; `.30` is current), login user `bdr`, tailnet
 
 | what | handle | URL(s) | status |
 |---|---|---|---|
-| BdRatsNest | `BdRatsNest` | `http://10.10.10.30:8440` (LAN) · `http://100.73.131.60:8440` (tailnet) | **live**, but manually started (`./run.sh`, plain Flask dev server) — **not a systemd service**, won't survive a reboot |
+| BdRatsNest | `BdRatsNest` | *stale — was `https://bdrpisrvdungeon:8440`, app terminating its own TLS; that's being reverted, see below* | **live** (currently the broken TLS-on-app build), manually started (`./run.sh`, plain Flask dev server) — **not a systemd service**, won't survive a reboot |
 
 The `bDotRad/BdRPiSrvDungeon` config repo is scaffolded (mirrors
 `BdRPiSrvAMI`: `srvhome/`, nginx, TLS, tailscale,
@@ -82,12 +82,33 @@ there yet — nothing currently serves `/` on this box. `BdRDungeon` (the
 other project slated for this box) also isn't deployed yet, just its
 server row is linked.
 
-BdRatsNest is a **mock/placeholder device grid** — no real Shelly/ESP32
-integration yet, see the project's own `CLAUDE.md`. It's authored on
-`DEV` and pulled onto `DUNGEON` via its own read-only GitHub deploy key
-`bdrpisrvdungeon_to_bdratsnestgit` (generated on the `DUNGEON` box
-itself, registered on the private `bDotRad/BdRatsNest` repo — a new key,
-doesn't replace anything).
+BdRatsNest controls **real Shelly devices** over Gen2+ RPC (six relay
+channels + three Pro EM50 energy meters, verified end-to-end against
+the physical hardware) — not a mock/placeholder grid, see the
+project's own `CLAUDE.md` Status section (as of 2026-09-16). It's
+authored on `DEV` and pulled onto `DUNGEON` via its own read-only
+GitHub deploy key `bdrpisrvdungeon_to_bdratsnestgit` (generated on the
+`DUNGEON` box itself, registered on the private `bDotRad/BdRatsNest`
+repo — a new key, doesn't replace anything).
+
+**2026-09-18: TLS revert pending deploy.** `BdRatsNest` briefly grew
+its own in-process TLS (commits `4e000b2`/`815a9cc`), which broke it
+against `BdRPiSrvDungeon`'s nginx (`proxy_pass http://127.0.0.1:8440`
+expects a plain-HTTP backend) — a live instance of the exact
+"never terminate TLS in the app" mistake `HTTPS.md` documents. Reverted
+on `DEV` (commit `7cb48de`, pushed) to plain HTTP on `127.0.0.1:8440`
+per `BdRatsNest/_Requests/rHTTPSStandardAdopt.md`. **Not yet deployed**
+— `DUNGEON` still needs a `git pull` + process restart (Action block
+left in that request, `WAITING RESPONSE`, since a session can't
+restart a remote daemon unattended). Once binding to `127.0.0.1` only,
+the app is no longer reachable by direct port from the LAN/tailnet —
+external reachability then depends on `DUNGEON`'s own nginx vhost /
+`tailscale serve` config for this app, which is a **separate,
+not-yet-done** migration tracked in the `BdRPiSrvDungeon` repo's own
+`rHTTPSStandardAdopt.md` (see `HTTPS.md` adoption table — `DUNGEON` is
+still "fan-out", own `fleetCA`, not migrated). The real post-fix URL
+is unknown until that lands; don't fill in a guessed one here or in
+the ecosystem Supabase row until it's confirmed.
 
 ### `BIRD` — `BdRBirdDetector`
 
