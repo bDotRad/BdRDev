@@ -59,6 +59,12 @@ updated.
 
 ## Still to do — Brad: the web front doors broke
 
+**2026-09-27 update:** the `tailscale serve` reset is done. Verified from DEV:
+`https://bdrpisrvratsnest.tail0ed3f6.ts.net/` and `:8441/` both return 200.
+nginx (LAN) is still `failed` and `bdratsnest-alias` is still inactive
+("Local name collision"; needs `avahi-publish -a -R`). The fix for both was
+given to Brad in chat and belongs in the `BdRPiSrvDungeon` repo.
+
 Since the reboot, nothing on the box is reachable over HTTPS. The
 backends are fine (`srvhome` on `:8610` and `bdratsnest.service` on
 `:8440` both return 200 locally).
