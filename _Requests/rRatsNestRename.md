@@ -45,47 +45,69 @@ Clarified with Brad in the same session:
   `bdrdev_to_bdrpidungeonserver`, config repo `BdRPiSrvDungeon`, deploy
   keys `*bdrpisrvdungeon*`.
 
-## Still to do — Brad
+## Hostname rename — done, verified 2026-09-27
+
+Brad ran the rename. The first attempt was undone at boot by cloud-init
+(Imager's `/boot/firmware/user-data` still said `hostname: BdRpi`, and
+`preserve_hostname: false` re-applies it every boot). Fixed by changing
+that line and adding `/etc/cloud/cloud.cfg.d/99-keep-hostname.cfg` with
+`preserve_hostname: true`. Read-only check after the 10:27 reboot:
+`hostname`, `/etc/hostname`, user-data, tailnet (`bdrpisrvratsnest`) and
+`bdrpisrvratsnest.local` are all correct. Supabase `ts_url` is set to
+`https://bdrpisrvratsnest.tail0ed3f6.ts.net`; FLEET.md + Naming.md are
+updated.
+
+## Still to do — Brad: the web front doors broke
+
+Since the reboot, nothing on the box is reachable over HTTPS. The
+backends are fine (`srvhome` on `:8610` and `bdratsnest.service` on
+`:8440` both return 200 locally).
+
+- **`tailscale serve`** still has its config under the old name
+  `bdrpisrvdungeon.tail0ed3f6.ts.net`, so every TLS handshake to the new
+  name fails. This is a direct consequence of the rename, so it's fixed
+  here:
 
 @@@ --- Action --- @@@
 
-1. Set the Pi's hostname to BdRPiSrvRatsNest (on the Pi)
+1. Re-create tailscale serve under the new name (on the Pi)
 
-"Rename the host, fix /etc/hosts, re-announce the mDNS name, rename the tailnet node"
+"Clear the old-name serve config and re-add the same mappings"
 ssh BdRPiDungeon
-sudo hostnamectl set-hostname BdRPiSrvRatsNest
-sudo sed -i 's/\bBdRpi\b/BdRPiSrvRatsNest/g' /etc/hosts
-sudo systemctl restart avahi-daemon
-sudo tailscale set --hostname=bdrpisrvratsnest
+sudo tailscale serve reset
+sudo tailscale serve --bg --https=443  http://127.0.0.1:8610
+sudo tailscale serve --bg --https=8441 http://127.0.0.1:8440
+sudo tailscale serve status
 
-2. Check it took
+2. Check from any tailnet browser
 
-"Should print BdRPiSrvRatsNest, and the tailnet should list bdrpisrvratsnest"
-hostname
-tailscale status | grep 100.73.131.60
-
-If `tailscale status` still shows `bdrpisrvdungeon`, the machine name was
-set by hand in the Tailscale admin console. Rename it there too
-(Machines → … → Edit machine name).
+"srvhome and BdRatsNest should both load"
+https://bdrpisrvratsnest.tail0ed3f6.ts.net/
+https://bdrpisrvratsnest.tail0ed3f6.ts.net:8441/
 
 @@@ --- End Action --- @@@
 
-Flip this file back to `READY` when that's done. The next session then:
-- verifies over SSH (read-only) and sets Supabase `ts_url` to
-  `https://bdrpisrvratsnest.tail0ed3f6.ts.net`, then updates the
-  hostname/tailnet cells in FLEET.md + Naming.md;
-- fixes the remaining old-name prose in `_Instructions/SSH.md`
-  (line ~110 says "box hostname `BdRPiSrvDungeon`") and `HTTPS.md`. This
-  pass skipped them because SSH.md had another session's uncommitted
-  edits in it;
-- notes that the box's TLS cert SANs still say `bdrpisrvdungeon`. That's
-  handled in the `BdRPiSrvDungeon` repo's `rHTTPSStandardAdopt.md`, not
-  here;
-- flags that `~/projects/CLAUDE.md` on DEV still lists
-  `DUNGEON`/`BdRPiSrvDungeon` as "not provisioned yet" (it's outside this
-  repo, so it needs Brad's OK to edit);
-- archives this file.
+  The old `:8445 → 127.0.0.1:8085` mapping was left out on purpose.
+  Nothing listens on `:8085`. Re-add it if you know what it was for.
 
-Optional, later: tell the `BdRatsNest` and `BdRDungeon` projects about the
-box rename (their own docs say `DUNGEON`). That work belongs in those
-repos, not here.
+- **nginx** is `failed` (`bind() to 0.0.0.0:443 … Address already in
+  use`), because `tailscale serve` took the tailnet IP's `:443` first
+  this boot. That's a latent fault in the box's nginx config, not caused
+  by the rename. Per `HTTPS.md`, nginx should `listen` on
+  `10.10.10.30:443` + `127.0.0.1` only. The fix belongs in the
+  `BdRPiSrvDungeon` repo (`_Requests/rHTTPSStandardAdopt.md`), not here.
+  Until it's fixed there's no LAN HTTPS (`https://bdrpisrvratsnest.local`).
+
+When step 1 is done, flip this back to `READY`. The next session then:
+- verifies both tailnet URLs from DEV and archives this file;
+- fixes the remaining old-name prose in `_Instructions/SSH.md` (line ~110
+  says "box hostname `BdRPiSrvDungeon`") and `HTTPS.md`. These were
+  skipped because SSH.md had another session's uncommitted edits;
+- flags that `~/projects/CLAUDE.md` on DEV still lists
+  `DUNGEON`/`BdRPiSrvDungeon` as "not provisioned yet" (outside this repo,
+  so it needs Brad's OK to edit).
+
+Optional, later: tell the `BdRatsNest`, `BdRDungeon` and
+`BdRPiSrvDungeon` projects about the box rename (their docs say
+`DUNGEON`, and the box's TLS cert SANs still say `bdrpisrvdungeon`).
+That work belongs in those repos.

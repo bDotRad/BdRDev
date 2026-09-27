@@ -17,10 +17,9 @@ reach each other.** Names follow [`Naming.md`](Naming.md).
 >
 > Last verified by hand: **2026-09-27** (box formerly `DUNGEON` /
 > `BdRPiSrvDungeon` renamed to `RATSNEST` / `BdRPiSrvRatsNest` per Brad;
-> read-only check found its OS hostname still `BdRpi` — the earlier
-> "hostname is now `BdRPiSrvDungeon`" note was wrong. Hostname change
-> pending, Action block in `_Requests/rRatsNestRename.md`. `HA` Green appliance
-> being retired).
+> OS hostname, mDNS and tailnet name all verified renamed and surviving
+> a reboot. `tailscale serve` + nginx on it broken since that reboot —
+> see the `RATSNEST` section. `HA` Green appliance being retired).
 
 ## Boxes
 
@@ -28,7 +27,7 @@ reach each other.** Names follow [`Naming.md`](Naming.md).
 |---|---|---|---|---|---|---|
 | `DEV` | `BdRPiSrvDev` | Raspberry Pi, Ubuntu Server, 8GB | `10.10.8.11` | `bdrpisrvdev.tail0ed3f6.ts.net` / `100.116.147.74` | yes (scheduler + CloudCLI) | BdRDev dashboard |
 | `AMI` | `BdRPiSrvAMI` | Raspberry Pi, 8GB | `10.10.10.20` | `bdrpisrvami.tail0ed3f6.ts.net` / `100.86.25.88` | yes | `srvhome` |
-| `RATSNEST` | `BdRPiSrvRatsNest` | Raspberry Pi 5, Debian 13 (trixie), aarch64 | `10.10.10.30` | `bdrpisrvdungeon.tail0ed3f6.ts.net` / `100.73.131.60` *(becomes `bdrpisrvratsnest` after rename)* | not yet | `srvhome` (repo scaffolded, not deployed) |
+| `RATSNEST` | `BdRPiSrvRatsNest` | Raspberry Pi 5, Debian 13 (trixie), aarch64 | `10.10.10.30` | `bdrpisrvratsnest.tail0ed3f6.ts.net` / `100.73.131.60` | not yet | `srvhome` (running on `127.0.0.1:8610`; front doors broken — see below) |
 | `BIRD` | `BdRBirdDetector` | Raspberry Pi, RPi OS Lite, 4GB | `192.168.1.187` | not on tailnet | no | app (`bdrbirddetector.local`) |
 | `HA` | `HA` | Home Assistant Green appliance, Home Assistant OS — **being retired** | `10.10.10.100` | not on tailnet | no | Home Assistant (`ratsnest.local:8123`) |
 
@@ -71,25 +70,44 @@ Provisioned 2026-09-16: Raspberry Pi 5, Debian 13 (trixie), aarch64.
 **Renamed 2026-09-27** from `DUNGEON` / `BdRPiSrvDungeon` — it hosts
 two projects: `BdRDungeon` (circuits and testing in the Dungeon) and
 `BdRatsNest` (the new home automation, replacing the `HA` Green).
-The OS hostname is still `BdRpi` as of 2026-09-27 (never actually got
-changed to `BdRPiSrvDungeon`); setting it to `BdRPiSrvRatsNest` is an
-Action block for Brad. LAN `10.10.10.30`, login user `bdr`, tailnet
-`bdrpisrvdungeon.tail0ed3f6.ts.net` / `100.73.131.60` until the
-Tailscale machine is renamed. Things that keep the old name for now
+OS hostname `BdRPiSrvRatsNest` (was the Imager name `BdRpi`, never
+actually `BdRPiSrvDungeon`). **cloud-init gotcha:** Imager's
+`/boot/firmware/user-data` sets `hostname:` and cloud-init re-applies it
+every boot, which silently undid the first rename. Fixed by changing
+that line and adding `/etc/cloud/cloud.cfg.d/99-keep-hostname.cfg`
+(`preserve_hostname: true`). On a fresh install, set the name in
+Imager. LAN `10.10.10.30` / `bdrpisrvratsnest.local`, login user `bdr`,
+tailnet `bdrpisrvratsnest.tail0ed3f6.ts.net` / `100.73.131.60`. Things
+that keep the old name for now
 (renaming them is separate, deferred work — see `Naming.md`): SSH alias
 `BdRPiDungeon` + key `bdrdev_to_bdrpidungeonserver`, the config repo
 `BdRPiSrvDungeon`, and the deploy keys named `*bdrpisrvdungeon*`.
 
 | what | handle | URL(s) | status |
 |---|---|---|---|
-| BdRatsNest | `BdRatsNest` | *stale — was `https://bdrpisrvdungeon:8440`, app terminating its own TLS; that's being reverted, see below* | **live** (currently the broken TLS-on-app build), manually started (`./run.sh`, plain Flask dev server) — **not a systemd service**, won't survive a reboot |
+| `srvhome` — box status page | `srvhome` | `https://bdrpisrvratsnest.tail0ed3f6.ts.net/` (`tailscale serve` → `127.0.0.1:8610`) | running from `~/projects/BdRPiSrvDungeon/srvhome/`; **unreachable since 2026-09-27**, see below |
+| BdRatsNest | `BdRatsNest` | `https://bdrpisrvratsnest.tail0ed3f6.ts.net:8441` (`tailscale serve` → `127.0.0.1:8440`) | **live**, systemd `bdratsnest.service`, plain HTTP backend; **unreachable since 2026-09-27**, see below |
+| *(unknown)* | — | `…ts.net:8445` → `127.0.0.1:8085` | `tailscale serve` mapping exists, nothing listening on `:8085` |
 
-The `bDotRad/BdRPiSrvDungeon` config repo is scaffolded (mirrors
-`BdRPiSrvAMI`: `srvhome/`, nginx, TLS, tailscale,
-`BdRPiSrvDungeon-PROVISION.md`) but `srvhome` itself isn't deployed
-there yet — nothing currently serves `/` on this box. `BdRDungeon` (the
-other project slated for this box) also isn't deployed yet, just its
-server row is linked.
+**2026-09-27: front doors broken by the rename + reboot.** Backends
+are fine (`127.0.0.1:8610` and `:8440` both return 200 on the box). Two
+separate faults:
+- **`tailscale serve`** config is still keyed to the old name
+  `bdrpisrvdungeon.tail0ed3f6.ts.net`, so a TLS handshake to
+  `bdrpisrvratsnest…` fails with `tlsv1 alert internal error`. It needs
+  a reset and the mappings re-adding. Action block in
+  `_Requests/rRatsNestRename.md`.
+- **nginx** is `failed`: `bind() to 0.0.0.0:443 … Address already in
+  use`. On this boot `tailscale serve` grabbed the tailnet IP's `:443`
+  first. This is a latent config fault, not caused by the rename: per
+  `HTTPS.md`, nginx must `listen` on the LAN IP + `127.0.0.1` only.
+  The fix belongs in the `BdRPiSrvDungeon` repo (its
+  `rHTTPSStandardAdopt.md`). Until then there is no LAN HTTPS
+  (`bdrpisrvratsnest.local`).
+
+The `bDotRad/BdRPiSrvDungeon` config repo mirrors `BdRPiSrvAMI`
+(`srvhome/`, nginx, TLS, tailscale, `BdRPiSrvDungeon-PROVISION.md`).
+`BdRDungeon` isn't deployed yet, only its server row is linked.
 
 BdRatsNest controls **real Shelly devices** over Gen2+ RPC (six relay
 channels + three Pro EM50 energy meters, verified end-to-end against
@@ -100,24 +118,12 @@ GitHub deploy key `bdrpisrvdungeon_to_bdratsnestgit` (generated on the
 `RATSNEST` box itself, registered on the private `bDotRad/BdRatsNest`
 repo — a new key, doesn't replace anything).
 
-**2026-09-18: TLS revert pending deploy.** `BdRatsNest` briefly grew
-its own in-process TLS (commits `4e000b2`/`815a9cc`), which broke it
-against `BdRPiSrvRatsNest`'s nginx (`proxy_pass http://127.0.0.1:8440`
-expects a plain-HTTP backend) — a live instance of the exact
-"never terminate TLS in the app" mistake `HTTPS.md` documents. Reverted
-on `DEV` (commit `7cb48de`, pushed) to plain HTTP on `127.0.0.1:8440`
-per `BdRatsNest/_Requests/rHTTPSStandardAdopt.md`. **Not yet deployed**
-— `RATSNEST` still needs a `git pull` + process restart (Action block
-left in that request, `WAITING RESPONSE`, since a session can't
-restart a remote daemon unattended). Once binding to `127.0.0.1` only,
-the app is no longer reachable by direct port from the LAN/tailnet —
-external reachability then depends on `RATSNEST`'s own nginx vhost /
-`tailscale serve` config for this app, which is a **separate,
-not-yet-done** migration tracked in the `BdRPiSrvDungeon` repo's own
-`rHTTPSStandardAdopt.md` (see `HTTPS.md` adoption table — `RATSNEST` (listed there as `DUNGEON`) is
-still "fan-out", own `fleetCA`, not migrated). The real post-fix URL
-is unknown until that lands; don't fill in a guessed one here or in
-the ecosystem Supabase row until it's confirmed.
+**TLS revert: deployed.** `BdRatsNest`'s brief in-process TLS
+(2026-09-18, reverted in `7cb48de`) is gone from the box. As of
+2026-09-27 it runs as `bdratsnest.service` on plain HTTP
+`127.0.0.1:8440` (checkout at `3d17cfa`) behind `tailscale serve`
+`:8441`. The nginx/LAN side of the `HTTPS.md` migration is still open
+in the `BdRPiSrvDungeon` repo's `rHTTPSStandardAdopt.md`.
 
 ### `BIRD` — `BdRBirdDetector`
 

@@ -26,7 +26,7 @@ piece of work. This doc is about what to *call* things in prose and data.
 |---|---|---|---|---|---|
 | `DEV` | `BdRPiSrvDev` | `bdrpisrvdev` | `10.10.8.11` | `bdrpisrvdev.tail0ed3f6.ts.net` / `100.116.147.74` | BdRDev *(as a host)*, BdRVSrvDev, BdRSrvDev, "the dev box", `bdrdev.local` |
 | `AMI` | `BdRPiSrvAMI` | `BdRPiSrvAMI` | `10.10.10.20` | `bdrpisrvami.tail0ed3f6.ts.net` / `100.86.25.88` | BdRPiAMI *(SSH alias only — see note)*, BdRSrvAMI, PlanBdRadServer, "the Pi", `bdrpiami.local` |
-| `RATSNEST` | `BdRPiSrvRatsNest` | `BdRpi` *(→ `BdRPiSrvRatsNest`, rename pending 2026-09-27)* | `10.10.10.30` | `bdrpisrvdungeon.tail0ed3f6.ts.net` *(→ `bdrpisrvratsnest`, pending)* / `100.73.131.60` | `DUNGEON`, BdRPiSrvDungeon, BdRSrvDungeon *(renamed 2026-09-27)*, `BdRpi` |
+| `RATSNEST` | `BdRPiSrvRatsNest` | `BdRPiSrvRatsNest` | `10.10.10.30` | `bdrpisrvratsnest.tail0ed3f6.ts.net` / `100.73.131.60` | `DUNGEON`, BdRPiSrvDungeon, BdRSrvDungeon *(renamed 2026-09-27)*, `BdRpi` |
 | `BIRD` | `BdRBirdDetector` | `bdrbirddetector` | `192.168.1.187` | *(not on tailnet)* | BdRadBirdDetector, "the bird pi" |
 | `HA` | `HA` | `ratsnest` | `10.10.10.100` | *(not on tailnet)* | `RatsNest` *(was this box's handle until 2026-09-27; "RatsNest" now means the `RATSNEST` Pi)* — Home Assistant Green, **being retired** (going to Brad's parents) |
 
