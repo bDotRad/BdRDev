@@ -187,9 +187,6 @@ of the next request that touches them:
 - `servers` has no column for **what each box serves at `/`** or for the
   **handle** — both are only in this file / `Naming.md` until the
   `rFleetMap` schema change lands.
-- `fleet_meta.notes` is a stale prose blob (mentions the retired
-  `192.168.100.x` VM, "hostname still BdRDev", etc.). Replace with a
-  short pointer to this file.
 
 ## Naming note: "RatsNest" (settled 2026-09-27)
 
