@@ -15,10 +15,12 @@ reach each other.** Names follow [`Naming.md`](Naming.md).
 > **and** this file in the same request (see
 > [`Requests.md`](Requests.md) § "Keeping the fleet map current").
 >
-> Last verified by hand: **2026-09-16** (`DUNGEON`/`BdRPiSrvDungeon`:
-> hardware provisioned — Raspberry Pi 5, Debian 13 (trixie), aarch64,
-> LAN `10.10.10.30`, tailnet joined. `BdRatsNest` deployed and live
-> there, port `8440`).
+> Last verified by hand: **2026-09-27** (box formerly `DUNGEON` /
+> `BdRPiSrvDungeon` renamed to `RATSNEST` / `BdRPiSrvRatsNest` per Brad;
+> read-only check found its OS hostname still `BdRpi` — the earlier
+> "hostname is now `BdRPiSrvDungeon`" note was wrong. Hostname change
+> pending, Action block in `_Requests/rRatsNestRename.md`. `HA` Green appliance
+> being retired).
 
 ## Boxes
 
@@ -26,9 +28,9 @@ reach each other.** Names follow [`Naming.md`](Naming.md).
 |---|---|---|---|---|---|---|
 | `DEV` | `BdRPiSrvDev` | Raspberry Pi, Ubuntu Server, 8GB | `10.10.8.11` | `bdrpisrvdev.tail0ed3f6.ts.net` / `100.116.147.74` | yes (scheduler + CloudCLI) | BdRDev dashboard |
 | `AMI` | `BdRPiSrvAMI` | Raspberry Pi, 8GB | `10.10.10.20` | `bdrpisrvami.tail0ed3f6.ts.net` / `100.86.25.88` | yes | `srvhome` |
-| `DUNGEON` | `BdRPiSrvDungeon` | Raspberry Pi 5, Debian 13 (trixie), aarch64 | `10.10.10.30` | `bdrpisrvdungeon.tail0ed3f6.ts.net` / `100.73.131.60` | not yet | `srvhome` (repo scaffolded, not deployed) |
+| `RATSNEST` | `BdRPiSrvRatsNest` | Raspberry Pi 5, Debian 13 (trixie), aarch64 | `10.10.10.30` | `bdrpisrvdungeon.tail0ed3f6.ts.net` / `100.73.131.60` *(becomes `bdrpisrvratsnest` after rename)* | not yet | `srvhome` (repo scaffolded, not deployed) |
 | `BIRD` | `BdRBirdDetector` | Raspberry Pi, RPi OS Lite, 4GB | `192.168.1.187` | not on tailnet | no | app (`bdrbirddetector.local`) |
-| `RatsNest` | `RatsNest` | Home Assistant Green appliance, Home Assistant OS | `10.10.10.100` | not on tailnet | no | Home Assistant (`ratsnest.local:8123`) |
+| `HA` | `HA` | Home Assistant Green appliance, Home Assistant OS — **being retired** | `10.10.10.100` | not on tailnet | no | Home Assistant (`ratsnest.local:8123`) |
 
 `DEV` is the **dev host** — every repo is authored here and pushed to
 GitHub from here; every other box only pulls.
@@ -63,13 +65,20 @@ Canonical source is the **`BdRPiSrvAMI` repo, `srvhome/`** — moved out of
 BdRDev checkout. `BdRDev` still owns the fleet WebUI standard
 (`_Instructions/WebUI.md`) that page follows.
 
-### `DUNGEON` — `BdRPiSrvDungeon`
+### `RATSNEST` — `BdRPiSrvRatsNest`
 
 Provisioned 2026-09-16: Raspberry Pi 5, Debian 13 (trixie), aarch64.
-Hostname is now `BdRPiSrvDungeon` (was briefly `BdRpi` mid-setup — don't
-use that alias). LAN `10.10.10.30` (moved once during setup off an
-initial `10.10.8.19`; `.30` is current), login user `bdr`, tailnet
-`bdrpisrvdungeon.tail0ed3f6.ts.net` / `100.73.131.60`.
+**Renamed 2026-09-27** from `DUNGEON` / `BdRPiSrvDungeon` — it hosts
+two projects: `BdRDungeon` (circuits and testing in the Dungeon) and
+`BdRatsNest` (the new home automation, replacing the `HA` Green).
+The OS hostname is still `BdRpi` as of 2026-09-27 (never actually got
+changed to `BdRPiSrvDungeon`); setting it to `BdRPiSrvRatsNest` is an
+Action block for Brad. LAN `10.10.10.30`, login user `bdr`, tailnet
+`bdrpisrvdungeon.tail0ed3f6.ts.net` / `100.73.131.60` until the
+Tailscale machine is renamed. Things that keep the old name for now
+(renaming them is separate, deferred work — see `Naming.md`): SSH alias
+`BdRPiDungeon` + key `bdrdev_to_bdrpidungeonserver`, the config repo
+`BdRPiSrvDungeon`, and the deploy keys named `*bdrpisrvdungeon*`.
 
 | what | handle | URL(s) | status |
 |---|---|---|---|
@@ -86,26 +95,26 @@ BdRatsNest controls **real Shelly devices** over Gen2+ RPC (six relay
 channels + three Pro EM50 energy meters, verified end-to-end against
 the physical hardware) — not a mock/placeholder grid, see the
 project's own `CLAUDE.md` Status section (as of 2026-09-16). It's
-authored on `DEV` and pulled onto `DUNGEON` via its own read-only
+authored on `DEV` and pulled onto `RATSNEST` via its own read-only
 GitHub deploy key `bdrpisrvdungeon_to_bdratsnestgit` (generated on the
-`DUNGEON` box itself, registered on the private `bDotRad/BdRatsNest`
+`RATSNEST` box itself, registered on the private `bDotRad/BdRatsNest`
 repo — a new key, doesn't replace anything).
 
 **2026-09-18: TLS revert pending deploy.** `BdRatsNest` briefly grew
 its own in-process TLS (commits `4e000b2`/`815a9cc`), which broke it
-against `BdRPiSrvDungeon`'s nginx (`proxy_pass http://127.0.0.1:8440`
+against `BdRPiSrvRatsNest`'s nginx (`proxy_pass http://127.0.0.1:8440`
 expects a plain-HTTP backend) — a live instance of the exact
 "never terminate TLS in the app" mistake `HTTPS.md` documents. Reverted
 on `DEV` (commit `7cb48de`, pushed) to plain HTTP on `127.0.0.1:8440`
 per `BdRatsNest/_Requests/rHTTPSStandardAdopt.md`. **Not yet deployed**
-— `DUNGEON` still needs a `git pull` + process restart (Action block
+— `RATSNEST` still needs a `git pull` + process restart (Action block
 left in that request, `WAITING RESPONSE`, since a session can't
 restart a remote daemon unattended). Once binding to `127.0.0.1` only,
 the app is no longer reachable by direct port from the LAN/tailnet —
-external reachability then depends on `DUNGEON`'s own nginx vhost /
+external reachability then depends on `RATSNEST`'s own nginx vhost /
 `tailscale serve` config for this app, which is a **separate,
 not-yet-done** migration tracked in the `BdRPiSrvDungeon` repo's own
-`rHTTPSStandardAdopt.md` (see `HTTPS.md` adoption table — `DUNGEON` is
+`rHTTPSStandardAdopt.md` (see `HTTPS.md` adoption table — `RATSNEST` (listed there as `DUNGEON`) is
 still "fan-out", own `fleetCA`, not migrated). The real post-fix URL
 is unknown until that lands; don't fill in a guessed one here or in
 the ecosystem Supabase row until it's confirmed.
@@ -117,22 +126,26 @@ Pull-only from GitHub, pushes to Firebase. No Claude Code on the box.
 **Unreachable from the rest of the fleet** — foreign subnet
 (`192.168.1.0/24`), not on the tailnet.
 
-### `RatsNest`
+### `HA` — Home Assistant Green (being retired)
 
 | what | handle | URL(s) | status |
 |---|---|---|---|
-| Home Assistant | — | `http://ratsnest.local:8123` | live |
+| Home Assistant | — | `http://ratsnest.local:8123` | live — **being retired** |
 
 A Home Assistant Green appliance running Home Assistant OS — not a Pi
 BdRDev provisioned, no Claude Code, no repo/project of its own. Not on
 the tailnet; reachable on the LAN at `10.10.10.100` / `ratsnest.local`.
+Being made redundant by `BdRatsNest` on `RATSNEST`, then given to
+Brad's parents — at that point drop its row from Supabase and here.
+Its device hostname `ratsnest` is an alias now; "RatsNest" means the
+`RATSNEST` Pi.
 
 ## SSH matrix
 
 | from → to | command | headless? | notes |
 |---|---|---|---|
 | `DEV` → `AMI` | `ssh BdRPiAMI` (`bdr@10.10.10.20`) | ✅ yes | LAN key `bdrdev_to_bdrpiamiserver`. Use the LAN alias/IP, **not** the `*.ts.net` name. |
-| `DEV` → `DUNGEON` | `ssh BdRPiDungeon` (`bdr@10.10.10.30`) | ✅ yes | LAN key `bdrdev_to_bdrpidungeonserver`, same pattern as `AMI`. Use the LAN alias/IP, **not** the `*.ts.net` name. |
+| `DEV` → `RATSNEST` | `ssh BdRPiDungeon` (`bdr@10.10.10.30`) | ✅ yes | LAN key `bdrdev_to_bdrpidungeonserver`, same pattern as `AMI`. Use the LAN alias/IP, **not** the `*.ts.net` name. |
 | `DEV` → `BIRD` | — | ❌ | no key, foreign subnet, off tailnet |
 | `AMI` → anywhere | — | ❌ | `AMI` is a leaf; don't SSH out from it |
 | any → `DEV` | `ssh` as `bdr` | — | only one key trusted in `authorized_keys` |
@@ -149,12 +162,12 @@ write an Action block for Brad ([`Requests.md`](Requests.md)).
 | `BdRDev` | `DEV` | `DEV` | `DEV` | `BdRDev` (DEV pushes **and** pulls) | none |
 | `BdRAMAssist` | `AMAssist` | `DEV` | `AMI` (pull) | `BdRAMAssist` | shares PlanBdR's Supabase |
 | `PlanBdRad` | `PlanBdR` | `DEV` | `AMI` (pull) | `PlanBdRad` | Supabase on `AMI` |
-| `BdRDungeon` | `Dungeon` | `DEV` | `DUNGEON` (planned — server provisioned, app not deployed yet) | `BdRDungeon` | Supabase (planned) |
-| `BdRatsNest` | `BdRatsNest` | `DEV` | `DUNGEON` (live, dev server) | `BdRatsNest` | none |
+| `BdRDungeon` | `Dungeon` | `DEV` | `RATSNEST` (planned — server provisioned, app not deployed yet) | `BdRDungeon` | Supabase (planned) |
+| `BdRatsNest` | `BdRatsNest` | `DEV` | `RATSNEST` (live, dev server) | `BdRatsNest` | none |
 | `BdRBirdDetector` | `Bird` | `DEV` | `BIRD` (pull) | `BdRBirdDetector` | SQLite on box + Firebase |
 | `BdRWebGUIDev` | `WebGUI` | `DEV` | `DEV` | `BdRWebGUIDev` | none |
 | `BdRPiSrvAMI` | `AMI-cfg` | `DEV` | `AMI` (pull, as `~/projects/BdRPiAMI/`) | `BdRPiSrvAMI` | SQLite `srvhome.db` |
-| `BdRPiSrvDungeon` | `Dungeon-cfg` | `DEV` | `DUNGEON` (pull) | `BdRPiSrvDungeon` | none |
+| `BdRPiSrvDungeon` | `RatsNest-cfg` | `DEV` | `RATSNEST` (pull) | `BdRPiSrvDungeon` *(repo name kept)* | none |
 | `BdRVSrvDev` | `DEV-cfg` | `DEV` | `DEV` | *(check repo)* | none |
 | `BdRImpSys` | `ImpSys` | `DEV` | `AMI` (checkout only) | `BdRImpSys` | none yet |
 
@@ -172,16 +185,13 @@ of the next request that touches them:
   `192.168.100.x` VM, "hostname still BdRDev", etc.). Replace with a
   short pointer to this file.
 
-## Naming note: two "RatsNest"s, temporarily
+## Naming note: "RatsNest" (settled 2026-09-27)
 
-`BdRatsNest` (new project, this box's `DUNGEON` deploy) is built to
-**replace** the existing `RatsNest` Home Assistant Green appliance
-(separate box, `10.10.10.100`, see the `RatsNest` row above) — Brad
-found full Home Assistant overkill and is retiring that box once
-`BdRatsNest` takes over, per `BdRatsNest/Description.md`. Until that
-retirement happens, both exist at once, so per `Naming.md`'s
-one-canonical-name rule the **project** keeps the unabbreviated handle
-`BdRatsNest` (not shortened to `RatsNest`) specifically to avoid
-colliding with the appliance box's handle `RatsNest`. When the appliance
-is decommissioned, revisit whether the project should absorb the shorter
-handle.
+- **Box:** `RATSNEST` / `BdRPiSrvRatsNest` — the Pi 5 at `10.10.10.30`
+  (formerly `DUNGEON` / `BdRPiSrvDungeon`).
+- **Home-automation project:** `BdRatsNest` — name unchanged, confirmed
+  with Brad.
+- **Dungeon circuits/testing project:** `BdRDungeon` — name unchanged,
+  lives on the `RATSNEST` box. "The Dungeon" is the room, not a box.
+- **Old appliance:** the Home Assistant Green is handle `HA`, no longer
+  `RatsNest`. Being retired and given to Brad's parents.

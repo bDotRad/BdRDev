@@ -26,9 +26,16 @@ piece of work. This doc is about what to *call* things in prose and data.
 |---|---|---|---|---|---|
 | `DEV` | `BdRPiSrvDev` | `bdrpisrvdev` | `10.10.8.11` | `bdrpisrvdev.tail0ed3f6.ts.net` / `100.116.147.74` | BdRDev *(as a host)*, BdRVSrvDev, BdRSrvDev, "the dev box", `bdrdev.local` |
 | `AMI` | `BdRPiSrvAMI` | `BdRPiSrvAMI` | `10.10.10.20` | `bdrpisrvami.tail0ed3f6.ts.net` / `100.86.25.88` | BdRPiAMI *(SSH alias only — see note)*, BdRSrvAMI, PlanBdRadServer, "the Pi", `bdrpiami.local` |
-| `DUNGEON` | `BdRPiSrvDungeon` | `BdRPiSrvDungeon` | `10.10.10.30` | `bdrpisrvdungeon.tail0ed3f6.ts.net` / `100.73.131.60` | BdRSrvDungeon, `BdRpi` *(transient mid-setup hostname, 2026-09-15/16 — never use)* |
+| `RATSNEST` | `BdRPiSrvRatsNest` | `BdRpi` *(→ `BdRPiSrvRatsNest`, rename pending 2026-09-27)* | `10.10.10.30` | `bdrpisrvdungeon.tail0ed3f6.ts.net` *(→ `bdrpisrvratsnest`, pending)* / `100.73.131.60` | `DUNGEON`, BdRPiSrvDungeon, BdRSrvDungeon *(renamed 2026-09-27)*, `BdRpi` |
 | `BIRD` | `BdRBirdDetector` | `bdrbirddetector` | `192.168.1.187` | *(not on tailnet)* | BdRadBirdDetector, "the bird pi" |
-| `RatsNest` | `RatsNest` | `ratsnest` | `10.10.10.100` | *(not on tailnet)* | — |
+| `HA` | `HA` | `ratsnest` | `10.10.10.100` | *(not on tailnet)* | `RatsNest` *(was this box's handle until 2026-09-27; "RatsNest" now means the `RATSNEST` Pi)* — Home Assistant Green, **being retired** (going to Brad's parents) |
+
+The `RATSNEST` box used to be `DUNGEON`. "The Dungeon" is now just the
+room the `BdRDungeon` project works in, not a box. The SSH alias
+`BdRPiDungeon`, its key `bdrdev_to_bdrpidungeonserver`, the config repo
+`BdRPiSrvDungeon`, and the deploy keys named `*bdrpisrvdungeon*` keep
+their old names. Renaming them is separate, deferred work, like any
+repo/key rename (see above).
 
 `BdRPiAMI` survives in exactly two places for historical reasons and
 nowhere else: the `~/.ssh/config` alias on DEV (`ssh BdRPiAMI`) and the
@@ -43,8 +50,8 @@ Canonical = the repo directory name. Handle is for tables and prose.
 | `DEV` | `BdRDev` | fleet dashboard + round-robin scheduler + this `_Instructions/` standards layer | `DEV` |
 | `AMAssist` | `BdRAMAssist` | bulk asset-management data prep, feeds PlanBdR | `AMI` |
 | `PlanBdR` | `PlanBdRad` | preventative-maintenance plan generator | `AMI` |
-| `Dungeon` | `BdRDungeon` | "the Dungeon" hub — talks to ESP32 field devices | `DUNGEON` *(planned)* |
-| `BdRatsNest` | `BdRatsNest` | home-automation hub (Shelly now, ESP32 planned) — replaces the `RatsNest` Home Assistant appliance; kept unabbreviated to avoid colliding with that box's handle until it's decommissioned, see `FLEET.md` | `DUNGEON` |
+| `Dungeon` | `BdRDungeon` | circuits and testing in "the Dungeon" — hub that talks to ESP32 field devices | `RATSNEST` *(planned)* |
+| `BdRatsNest` | `BdRatsNest` | the new home automation (Shelly now, ESP32 planned) — replaces the `HA` Home Assistant Green; handle stays `BdRatsNest` so it isn't confused with the `RATSNEST` box | `RATSNEST` |
 | `Bird` | `BdRBirdDetector` | distributed acoustic bird detection / localization | `BIRD` |
 | `WebGUI` | `BdRWebGUIDev` | one-page web-GUI sandbox, dev only | `DEV` |
 | `AMI-cfg` | `BdRPiSrvAMI` | server-config repo for the AMI box (nginx / TLS / provisioning) + **the canonical home of `srvhome`** (`srvhome/`) | `AMI` (pull-only) |
