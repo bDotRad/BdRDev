@@ -146,6 +146,19 @@ Brad's parents — at that point drop its row from Supabase and here.
 Its device hostname `ratsnest` is an alias now; "RatsNest" means the
 `RATSNEST` Pi.
 
+### Off-fleet — Firebase Hosting
+
+Nothing here runs on a fleet box. Authored on `DEV`, deployed from `DEV`
+(`./publish.sh`, needs Brad's interactive `firebase login`).
+
+| what | handle | URL(s) | status |
+|---|---|---|---|
+| BdRapps — static web apps (BdRdraw, BdRbowtie, carry-panel-demo) | `Apps` | `https://bdrapps.web.app` (Firebase project `bdrapps`) | live |
+
+In Supabase this row has `runs_on_server_id = NULL` (no box) and the
+public URL in `local_url`, since the schema has no column for an
+off-fleet/public URL.
+
 ## SSH matrix
 
 | from → to | command | headless? | notes |
@@ -172,6 +185,7 @@ write an Action block for Brad ([`Requests.md`](Requests.md)).
 | `BdRatsNest` | `BdRatsNest` | `DEV` | `RATSNEST` (live, dev server) | `BdRatsNest` | none |
 | `BdRBirdDetector` | `Bird` | `DEV` | `BIRD` (pull) | `BdRBirdDetector` | SQLite on box + Firebase |
 | `BdRWebGUIDev` | `WebGUI` | `DEV` | `DEV` | `BdRWebGUIDev` | none |
+| `BdRapps` | `Apps` | `DEV` | Firebase Hosting (`./publish.sh` from `DEV`) — no fleet box | `BdRapps` (submodules `BdRdraw`, `BdotRBowTie`) | Firebase Firestore |
 | `BdRPiSrvAMI` | `AMI-cfg` | `DEV` | `AMI` (pull, as `~/projects/BdRPiAMI/`) | `BdRPiSrvAMI` | SQLite `srvhome.db` |
 | `BdRPiSrvDungeon` | `RatsNest-cfg` | `DEV` | `RATSNEST` (pull) | `BdRPiSrvDungeon` *(repo name kept)* | none |
 | `BdRVSrvDev` | `DEV-cfg` | `DEV` | `DEV` | *(check repo)* | none |

@@ -54,6 +54,7 @@ Canonical = the repo directory name. Handle is for tables and prose.
 | `BdRatsNest` | `BdRatsNest` | the new home automation (Shelly now, ESP32 planned) — replaces the `HA` Home Assistant Green; handle stays `BdRatsNest` so it isn't confused with the `RATSNEST` box | `RATSNEST` |
 | `Bird` | `BdRBirdDetector` | distributed acoustic bird detection / localization | `BIRD` |
 | `WebGUI` | `BdRWebGUIDev` | one-page web-GUI sandbox, dev only | `DEV` |
+| `Apps` | `BdRapps` | static web apps shared with other people (BdRdraw, BdRbowtie, carry-panel-demo), `https://bdrapps.web.app` | Firebase Hosting *(no fleet box)* |
 | `AMI-cfg` | `BdRPiSrvAMI` | server-config repo for the AMI box (nginx / TLS / provisioning) + **the canonical home of `srvhome`** (`srvhome/`) | `AMI` (pull-only) |
 | `DEV-cfg` | `BdRVSrvDev` | server-config repo for the DEV box (nginx / TLS / tailnet front door / CloudCLI) | `DEV` |
 | `ImpSys` | `BdRImpSys` | improvement-tracking system — nascent, only a checkout on `AMI` so far | `AMI` *(planned)* |
