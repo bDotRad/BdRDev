@@ -48,62 +48,23 @@ GitHub from here; every other box only pulls.
 
 ### `AMI` — `BdRPiSrvAMI`
 
-| what | handle | URL(s) | status |
-|---|---|---|---|
-| `srvhome` — box status page | `srvhome` | `https://bdrpisrvami.local/` | deployed — served at `/`, **not an app** |
-| BdRAMAssist | `AMAssist` | `https://bdramassist.local` · `…ts.net:8444` | building |
-| PlanBdRad | `PlanBdR` | `https://planbdrad.local` · `…ts.net:8443` | building |
-| self-hosted Supabase (Studio + API) — app DB | — | `:8000` / `:8443` studio | live |
-| BdRImpSys | `ImpSys` | — | checkout only, not deployed |
-| `AMI-cfg` = `BdRPiSrvAMI` repo | `AMI-cfg` | — | box config + canonical `srvhome/` source |
-
-`srvhome` runs from the box's own `bDotRad/BdRPiSrvAMI` checkout
-(`~/projects/BdRPiAMI/srvhome/`, `127.0.0.1:8610`, nginx `location /`).
-Canonical source is the **`BdRPiSrvAMI` repo, `srvhome/`** — moved out of
-`BdRDev/fleet/srvhome/` on 2026-09-11 so the AMI box no longer needs a
-BdRDev checkout. `BdRDev` still owns the fleet WebUI standard
-(`_Instructions/WebUI.md`) that page follows.
-
-### `RATSNEST` — `BdRPiSrvRatsNest`
-
-Provisioned 2026-09-16: Raspberry Pi 5, Debian 13 (trixie), aarch64.
-**Renamed 2026-09-27** from `DUNGEON` / `BdRPiSrvDungeon` — it hosts
-two projects: `BdRDungeon` (circuits and testing in the Dungeon) and
-`BdRatsNest` (the new home automation, replacing the `HA` Green).
-OS hostname `BdRPiSrvRatsNest` (was the Imager name `BdRpi`, never
-actually `BdRPiSrvDungeon`). **cloud-init gotcha:** Imager's
-`/boot/firmware/user-data` sets `hostname:` and cloud-init re-applies it
-every boot, which silently undid the first rename. Fixed by changing
-that line and adding `/etc/cloud/cloud.cfg.d/99-keep-hostname.cfg`
-(`preserve_hostname: true`). On a fresh install, set the name in
-Imager. LAN `10.10.10.30` / `bdrpisrvratsnest.local`, login user `bdr`,
-tailnet `bdrpisrvratsnest.tail0ed3f6.ts.net` / `100.73.131.60`. Things
-that keep the old name for now
-(renaming them is separate, deferred work — see `Naming.md`): SSH alias
-`BdRPiDungeon` + key `bdrdev_to_bdrpidungeonserver`, the config repo
-`BdRPiSrvDungeon`, and the deploy keys named `*bdrpisrvdungeon*`.
+Boots from a **512 GB NVMe SSD** (added 2026-10; the old SD card is no
+longer booted from), 4 GB RAM.
 
 | what | handle | URL(s) | status |
 |---|---|---|---|
-| `srvhome` — box status page | `srvhome` | `https://bdrpisrvratsnest.tail0ed3f6.ts.net/` (`tailscale serve` → `127.0.0.1:8610`) | running from `~/projects/BdRPiSrvDungeon/srvhome/`; **unreachable since 2026-09-27**, see below |
-| BdRatsNest | `BdRatsNest` | `https://bdrpisrvratsnest.tail0ed3f6.ts.net:8441` (`tailscale serve` → `127.0.0.1:8440`) | **live**, systemd `bdratsnest.service`, plain HTTP backend; **unreachable since 2026-09-27**, see below |
-| *(unknown)* | — | `…ts.net:8445` → `127.0.0.1:8085` | `tailscale serve` mapping exists, nothing listening on `:8085` |
+| `srvhome` — box landing page | `srvhome` | `https://bdrpisrvratsnest.tail0ed3f6.ts.net/` (`tailscale serve` → `127.0.0.1:8610`), `https://bdrpisrvratsnest.local/` (nginx) | live; runs from `~/projects/BdRPiSrvDungeon/srvhome/`; intro + links to the box's apps above the status tabs |
+| BdRatsNest | `BdRatsNest` | `https://bdrpisrvratsnest.tail0ed3f6.ts.net:8441` (`tailscale serve` → `127.0.0.1:8440`), `https://bdratsnest.local/` (nginx) | **live**, systemd `bdratsnest.service`, plain HTTP backend |
 
-**2026-09-27: front doors broken by the rename + reboot.** Backends
-are fine (`127.0.0.1:8610` and `:8440` both return 200 on the box). Two
-separate faults:
-- **`tailscale serve`** config is still keyed to the old name
-  `bdrpisrvdungeon.tail0ed3f6.ts.net`, so a TLS handshake to
-  `bdrpisrvratsnest…` fails with `tlsv1 alert internal error`. It needs
-  a reset and the mappings re-adding. Action block in
-  `_Requests/rRatsNestRename.md`.
-- **nginx** is `failed`: `bind() to 0.0.0.0:443 … Address already in
-  use`. On this boot `tailscale serve` grabbed the tailnet IP's `:443`
-  first. This is a latent config fault, not caused by the rename: per
-  `HTTPS.md`, nginx must `listen` on the LAN IP + `127.0.0.1` only.
-  The fix belongs in the `BdRPiSrvDungeon` repo (its
-  `rHTTPSStandardAdopt.md`). Until then there is no LAN HTTPS
-  (`bdrpisrvratsnest.local`).
+**2026-10-11 (verified on-box):** both tailnet front doors return 200 —
+the 2026-09-27 `tailscale serve` breakage is fixed, and the stray
+`:8445` → `:8085` mapping is gone. nginx came up on this boot, but its
+`0.0.0.0:443` bind still races `tailscale serve` at boot. The fix (listen on
+`10.10.10.30` + `127.0.0.1` only, `ip_nonlocal_bind`, site renamed
+`bdrpisrvratsnest`, cert renamed `bdrpisrvratsnest.local`) is committed in
+the `BdRPiSrvDungeon` repo. It is **not yet applied on the box**: that is the
+Action block in that repo's `_Requests/rRatsNestCleanup.md`, which also
+installs the `bdratsnest.local` mDNS alias (doesn't resolve yet).
 
 The `bDotRad/BdRPiSrvDungeon` config repo mirrors `BdRPiSrvAMI`
 (`srvhome/`, nginx, TLS, tailscale, `BdRPiSrvDungeon-PROVISION.md`).
