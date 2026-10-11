@@ -77,18 +77,18 @@ every boot, which silently undid the first rename. Fixed by changing
 that line and adding `/etc/cloud/cloud.cfg.d/99-keep-hostname.cfg`
 (`preserve_hostname: true`). On a fresh install, set the name in
 Imager. LAN `10.10.10.30` / `bdrpisrvratsnest.local`, login user `bdr`,
-tailnet `bdrpisrvratsnest.tail0ed3f6.ts.net` / `100.73.131.60`. Things
-that keep the old name for now
-(renaming them is separate, deferred work — see `Naming.md`): SSH alias
-`BdRPiDungeon` + key `bdrdev_to_bdrpidungeonserver`, the config repo
-`BdRPiSrvDungeon`, and the deploy keys named `*bdrpisrvdungeon*`.
+tailnet `bdrpisrvratsnest.tail0ed3f6.ts.net` / `100.73.131.60`. The config
+repo followed on 2026-10-11 (`BdRPiSrvDungeon` → `BdRPiSrvRatsNest`, GitHub
++ checkout folder). Still old-named, labels only: SSH alias `BdRPiDungeon` +
+key `bdrdev_to_bdrpidungeonserver`, and the deploy keys / GitHub host
+aliases named `*bdrpisrvdungeon*`.
 
 Boots from a **512 GB NVMe SSD** (added 2026-10; the old SD card is no
 longer booted from), 4 GB RAM.
 
 | what | handle | URL(s) | status |
 |---|---|---|---|
-| `srvhome` — box landing page | `srvhome` | `https://bdrpisrvratsnest.tail0ed3f6.ts.net/` (`tailscale serve` → `127.0.0.1:8610`), `https://bdrpisrvratsnest.local/` (nginx) | live; runs from `~/projects/BdRPiSrvDungeon/srvhome/`; intro + links to the box's apps above the status tabs |
+| `srvhome` — box landing page | `srvhome` | `https://bdrpisrvratsnest.tail0ed3f6.ts.net/` (`tailscale serve` → `127.0.0.1:8610`), `https://bdrpisrvratsnest.local/` (nginx) | live; runs from `~/projects/BdRPiSrvRatsNest/srvhome/`; intro + links to the box's apps above the status tabs |
 | BdRatsNest | `BdRatsNest` | `https://bdrpisrvratsnest.tail0ed3f6.ts.net:8441` (`tailscale serve` → `127.0.0.1:8440`), `https://bdratsnest.local/` (nginx) | **live**, systemd `bdratsnest.service`, plain HTTP backend |
 
 **2026-10-11 (verified on-box):** both tailnet front doors return 200 —
@@ -97,12 +97,12 @@ the 2026-09-27 `tailscale serve` breakage is fixed, and the stray
 `0.0.0.0:443` bind still races `tailscale serve` at boot. The fix (listen on
 `10.10.10.30` + `127.0.0.1` only, `ip_nonlocal_bind`, site renamed
 `bdrpisrvratsnest`, cert renamed `bdrpisrvratsnest.local`) is committed in
-the `BdRPiSrvDungeon` repo. It is **not yet applied on the box**: that is the
+the `BdRPiSrvRatsNest` repo. It is **not yet applied on the box**: that is the
 Action block in that repo's `_Requests/rRatsNestCleanup.md`, which also
 installs the `bdratsnest.local` mDNS alias (doesn't resolve yet).
 
-The `bDotRad/BdRPiSrvDungeon` config repo mirrors `BdRPiSrvAMI`
-(`srvhome/`, nginx, TLS, tailscale, `BdRPiSrvDungeon-PROVISION.md`).
+The `bDotRad/BdRPiSrvRatsNest` config repo mirrors `BdRPiSrvAMI`
+(`srvhome/`, nginx, TLS, tailscale, `BdRPiSrvRatsNest-PROVISION.md`).
 `BdRDungeon` isn't deployed yet, only its server row is linked.
 
 BdRatsNest controls **real Shelly devices** over Gen2+ RPC (six relay
@@ -119,7 +119,7 @@ repo — a new key, doesn't replace anything).
 2026-09-27 it runs as `bdratsnest.service` on plain HTTP
 `127.0.0.1:8440` (checkout at `3d17cfa`) behind `tailscale serve`
 `:8441`. The nginx/LAN side of the `HTTPS.md` migration is still open
-in the `BdRPiSrvDungeon` repo's `rHTTPSStandardAdopt.md`.
+in the `BdRPiSrvRatsNest` repo's `_Requests/rRatsNestCleanup.md`.
 
 ### `BIRD` — `BdRBirdDetector`
 
@@ -183,7 +183,7 @@ write an Action block for Brad ([`Requests.md`](Requests.md)).
 | `BdRWebGUIDev` | `WebGUI` | `DEV` | `DEV` | `BdRWebGUIDev` | none |
 | `BdRapps` | `Apps` | `DEV` | Firebase Hosting (`./publish.sh` from `DEV`) — no fleet box | `BdRapps` (submodules `BdRdraw`, `BdotRBowTie`) | Firebase Firestore |
 | `BdRPiSrvAMI` | `AMI-cfg` | `DEV` | `AMI` (pull, as `~/projects/BdRPiAMI/`) | `BdRPiSrvAMI` | SQLite `srvhome.db` |
-| `BdRPiSrvDungeon` | `RatsNest-cfg` | `DEV` | `RATSNEST` (pull) | `BdRPiSrvDungeon` *(repo name kept)* | none |
+| `BdRPiSrvRatsNest` | `RatsNest-cfg` | `DEV` | `RATSNEST` (pull) | `BdRPiSrvRatsNest` *(was `BdRPiSrvDungeon` until 2026-10-11)* | none |
 | `BdRVSrvDev` | `DEV-cfg` | `DEV` | `DEV` | *(check repo)* | none |
 | `BdRImpSys` | `ImpSys` | `DEV` | `AMI` (checkout only) | `BdRImpSys` | none yet |
 

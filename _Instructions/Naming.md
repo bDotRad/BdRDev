@@ -31,11 +31,13 @@ piece of work. This doc is about what to *call* things in prose and data.
 | `HA` | `HA` | `ratsnest` | `10.10.10.100` | *(not on tailnet)* | `RatsNest` *(was this box's handle until 2026-09-27; "RatsNest" now means the `RATSNEST` Pi)* — Home Assistant Green, **being retired** (going to Brad's parents) |
 
 The `RATSNEST` box used to be `DUNGEON`. "The Dungeon" is now just the
-room the `BdRDungeon` project works in, not a box. The SSH alias
-`BdRPiDungeon`, its key `bdrdev_to_bdrpidungeonserver`, the config repo
-`BdRPiSrvDungeon`, and the deploy keys named `*bdrpisrvdungeon*` keep
-their old names. Renaming them is separate, deferred work, like any
-repo/key rename (see above).
+room the `BdRDungeon` project works in, not a box. Its config repo
+was renamed `BdRPiSrvDungeon` → `BdRPiSrvRatsNest` on 2026-10-11 (GitHub +
+checkouts; the old GitHub URL redirects). The SSH alias `BdRPiDungeon`,
+its key `bdrdev_to_bdrpidungeonserver`, and the deploy keys / GitHub host
+aliases named `*bdrpisrvdungeon*` keep their old names for now (labels
+only). Renaming them is separate, deferred work, like any key rename
+(see above).
 
 `BdRPiAMI` survives in exactly two places for historical reasons and
 nowhere else: the `~/.ssh/config` alias on DEV (`ssh BdRPiAMI`) and the
@@ -56,6 +58,7 @@ Canonical = the repo directory name. Handle is for tables and prose.
 | `WebGUI` | `BdRWebGUIDev` | one-page web-GUI sandbox, dev only | `DEV` |
 | `Apps` | `BdRapps` | static web apps shared with other people (BdRdraw, BdRbowtie, carry-panel-demo), `https://bdrapps.web.app` | Firebase Hosting *(no fleet box)* |
 | `AMI-cfg` | `BdRPiSrvAMI` | server-config repo for the AMI box (nginx / TLS / provisioning) + **the canonical home of `srvhome`** (`srvhome/`) | `AMI` (pull-only) |
+| `RatsNest-cfg` | `BdRPiSrvRatsNest` | server-config repo for the RATSNEST box (nginx / TLS / tailscale / provisioning) + its `srvhome` landing page; was `BdRPiSrvDungeon` until 2026-10-11 | `RATSNEST` (pull-only) |
 | `DEV-cfg` | `BdRVSrvDev` | server-config repo for the DEV box (nginx / TLS / tailnet front door / CloudCLI) | `DEV` |
 | `ImpSys` | `BdRImpSys` | improvement-tracking system — nascent, only a checkout on `AMI` so far | `AMI` *(planned)* |
 | `CloudCLI` | *(third-party, no repo)* | `@cloudcli-ai/cloudcli` — Claude Code web UI | `DEV` |
