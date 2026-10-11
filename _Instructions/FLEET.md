@@ -18,8 +18,8 @@ reach each other.** Names follow [`Naming.md`](Naming.md).
 > Last verified by hand: **2026-09-27** (box formerly `DUNGEON` /
 > `BdRPiSrvDungeon` renamed to `RATSNEST` / `BdRPiSrvRatsNest` per Brad;
 > OS hostname, mDNS and tailnet name all verified renamed and surviving
-> a reboot. `tailscale serve` + nginx on it broken since that reboot —
-> see the `RATSNEST` section. `HA` Green appliance being retired).
+> a reboot. 2026-10-11: on a 512 GB NVMe SSD now, tailnet front doors up
+> again; a LAN nginx fix is pending on-box — see the `RATSNEST` section. `HA` Green appliance being retired).
 
 ## Boxes
 
@@ -27,7 +27,7 @@ reach each other.** Names follow [`Naming.md`](Naming.md).
 |---|---|---|---|---|---|---|
 | `DEV` | `BdRPiSrvDev` | Raspberry Pi, Ubuntu Server, 8GB | `10.10.8.11` | `bdrpisrvdev.tail0ed3f6.ts.net` / `100.116.147.74` | yes (scheduler + CloudCLI) | BdRDev dashboard |
 | `AMI` | `BdRPiSrvAMI` | Raspberry Pi, 8GB | `10.10.10.20` | `bdrpisrvami.tail0ed3f6.ts.net` / `100.86.25.88` | yes | `srvhome` |
-| `RATSNEST` | `BdRPiSrvRatsNest` | Raspberry Pi 5, Debian 13 (trixie), aarch64 | `10.10.10.30` | `bdrpisrvratsnest.tail0ed3f6.ts.net` / `100.73.131.60` | not yet | `srvhome` (running on `127.0.0.1:8610`; front doors broken — see below) |
+| `RATSNEST` | `BdRPiSrvRatsNest` | Raspberry Pi 5, Debian 13 (trixie), aarch64 | `10.10.10.30` | `bdrpisrvratsnest.tail0ed3f6.ts.net` / `100.73.131.60` | not yet | `srvhome` (box landing page at `/`; LAN nginx fix pending on-box — see below) |
 | `BIRD` | `BdRBirdDetector` | Raspberry Pi, RPi OS Lite, 4GB | `192.168.1.187` | not on tailnet | no | app (`bdrbirddetector.local`) |
 | `HA` | `HA` | Home Assistant Green appliance, Home Assistant OS — **being retired** | `10.10.10.100` | not on tailnet | no | Home Assistant (`ratsnest.local:8123`) |
 
@@ -47,6 +47,41 @@ GitHub from here; every other box only pulls.
 | `DEV-cfg` = `BdRVSrvDev` repo | `DEV-cfg` | — | box config only, not a service |
 
 ### `AMI` — `BdRPiSrvAMI`
+
+| what | handle | URL(s) | status |
+|---|---|---|---|
+| `srvhome` — box status page | `srvhome` | `https://bdrpisrvami.local/` | deployed — served at `/`, **not an app** |
+| BdRAMAssist | `AMAssist` | `https://bdramassist.local` · `…ts.net:8444` | building |
+| PlanBdRad | `PlanBdR` | `https://planbdrad.local` · `…ts.net:8443` | building |
+| self-hosted Supabase (Studio + API) — app DB | — | `:8000` / `:8443` studio | live |
+| BdRImpSys | `ImpSys` | — | checkout only, not deployed |
+| `AMI-cfg` = `BdRPiSrvAMI` repo | `AMI-cfg` | — | box config + canonical `srvhome/` source |
+
+`srvhome` runs from the box's own `bDotRad/BdRPiSrvAMI` checkout
+(`~/projects/BdRPiAMI/srvhome/`, `127.0.0.1:8610`, nginx `location /`).
+Canonical source is the **`BdRPiSrvAMI` repo, `srvhome/`** — moved out of
+`BdRDev/fleet/srvhome/` on 2026-09-11 so the AMI box no longer needs a
+BdRDev checkout. `BdRDev` still owns the fleet WebUI standard
+(`_Instructions/WebUI.md`) that page follows.
+
+### `RATSNEST` — `BdRPiSrvRatsNest`
+
+Provisioned 2026-09-16: Raspberry Pi 5, Debian 13 (trixie), aarch64.
+**Renamed 2026-09-27** from `DUNGEON` / `BdRPiSrvDungeon` — it hosts
+two projects: `BdRDungeon` (circuits and testing in the Dungeon) and
+`BdRatsNest` (the new home automation, replacing the `HA` Green).
+OS hostname `BdRPiSrvRatsNest` (was the Imager name `BdRpi`, never
+actually `BdRPiSrvDungeon`). **cloud-init gotcha:** Imager's
+`/boot/firmware/user-data` sets `hostname:` and cloud-init re-applies it
+every boot, which silently undid the first rename. Fixed by changing
+that line and adding `/etc/cloud/cloud.cfg.d/99-keep-hostname.cfg`
+(`preserve_hostname: true`). On a fresh install, set the name in
+Imager. LAN `10.10.10.30` / `bdrpisrvratsnest.local`, login user `bdr`,
+tailnet `bdrpisrvratsnest.tail0ed3f6.ts.net` / `100.73.131.60`. Things
+that keep the old name for now
+(renaming them is separate, deferred work — see `Naming.md`): SSH alias
+`BdRPiDungeon` + key `bdrdev_to_bdrpidungeonserver`, the config repo
+`BdRPiSrvDungeon`, and the deploy keys named `*bdrpisrvdungeon*`.
 
 Boots from a **512 GB NVMe SSD** (added 2026-10; the old SD card is no
 longer booted from), 4 GB RAM.
