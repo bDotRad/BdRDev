@@ -26,7 +26,7 @@ Clarified with Brad in the same session:
 
 ## Done (2026-09-27, interactive session on DEV)
 
-- Read-only check over `ssh BdRPiDungeon`: OS hostname is still
+- Read-only check over `ssh BdRPiSrvRatsNest`: OS hostname is still
   **`BdRpi`**. It was never actually set to `BdRPiSrvDungeon`, although
   FLEET.md/Naming.md said it had been. Checkouts on the box are
   `BdRatsNest`, `BdRDungeon` and `BdRPiSrvDungeon`.
@@ -43,7 +43,8 @@ Clarified with Brad in the same session:
 - Kept their old names on purpose (repo/key renames are deferred per
   Naming.md): SSH alias `BdRPiDungeon`, key
   `bdrdev_to_bdrpidungeonserver`, config repo `BdRPiSrvDungeon`, deploy
-  keys `*bdrpisrvdungeon*`.
+  keys `*bdrpisrvdungeon*`. *(2026-10-11: SSH alias since renamed to
+  `BdRPiSrvRatsNest` and config repo to `BdRPiSrvRatsNest`.)*
 
 ## Hostname rename — done, verified 2026-09-27
 
@@ -79,7 +80,7 @@ backends are fine (`srvhome` on `:8610` and `bdratsnest.service` on
 1. Re-create tailscale serve under the new name (on the Pi)
 
 "Clear the old-name serve config and re-add the same mappings"
-ssh BdRPiDungeon
+ssh BdRPiSrvRatsNest
 sudo tailscale serve reset
 sudo tailscale serve --bg --https=443  http://127.0.0.1:8610
 sudo tailscale serve --bg --https=8441 http://127.0.0.1:8440

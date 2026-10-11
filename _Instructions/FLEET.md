@@ -79,8 +79,8 @@ that line and adding `/etc/cloud/cloud.cfg.d/99-keep-hostname.cfg`
 Imager. LAN `10.10.10.30` / `bdrpisrvratsnest.local`, login user `bdr`,
 tailnet `bdrpisrvratsnest.tail0ed3f6.ts.net` / `100.73.131.60`. The config
 repo followed on 2026-10-11 (`BdRPiSrvDungeon` → `BdRPiSrvRatsNest`, GitHub
-+ checkout folder). Still old-named, labels only: SSH alias `BdRPiDungeon` +
-key `bdrdev_to_bdrpidungeonserver`, and the deploy keys / GitHub host
++ checkout folder). SSH alias is `BdRPiSrvRatsNest` (was `BdRPiDungeon`, still
+accepted). Still old-named, labels only: key `bdrdev_to_bdrpidungeonserver`, and the deploy keys / GitHub host
 aliases named `*bdrpisrvdungeon*`.
 
 Boots from a **512 GB NVMe SSD** (added 2026-10; the old SD card is no
@@ -160,7 +160,7 @@ off-fleet/public URL.
 | from → to | command | headless? | notes |
 |---|---|---|---|
 | `DEV` → `AMI` | `ssh BdRPiAMI` (`bdr@10.10.10.20`) | ✅ yes | LAN key `bdrdev_to_bdrpiamiserver`. Use the LAN alias/IP, **not** the `*.ts.net` name. |
-| `DEV` → `RATSNEST` | `ssh BdRPiDungeon` (`bdr@10.10.10.30`) | ✅ yes | LAN key `bdrdev_to_bdrpidungeonserver`, same pattern as `AMI`. Use the LAN alias/IP, **not** the `*.ts.net` name. |
+| `DEV` → `RATSNEST` | `ssh BdRPiSrvRatsNest` (`bdr@10.10.10.30`) | ✅ yes | LAN key `bdrdev_to_bdrpidungeonserver`, same pattern as `AMI`. Use the LAN alias/IP, **not** the `*.ts.net` name. |
 | `DEV` → `BIRD` | — | ❌ | no key, foreign subnet, off tailnet |
 | `AMI` → anywhere | — | ❌ | `AMI` is a leaf; don't SSH out from it |
 | any → `DEV` | `ssh` as `bdr` | — | only one key trusted in `authorized_keys` |

@@ -33,8 +33,9 @@ piece of work. This doc is about what to *call* things in prose and data.
 The `RATSNEST` box used to be `DUNGEON`. "The Dungeon" is now just the
 room the `BdRDungeon` project works in, not a box. Its config repo
 was renamed `BdRPiSrvDungeon` → `BdRPiSrvRatsNest` on 2026-10-11 (GitHub +
-checkouts; the old GitHub URL redirects). The SSH alias `BdRPiDungeon`,
-its key `bdrdev_to_bdrpidungeonserver`, and the deploy keys / GitHub host
+checkouts; the old GitHub URL redirects). DEV's SSH alias is now `BdRPiSrvRatsNest`
+(renamed 2026-10-11; `BdRPiDungeon` still works as a fallback — don't use
+it in new writing). The key `bdrdev_to_bdrpidungeonserver`, and the deploy keys / GitHub host
 aliases named `*bdrpisrvdungeon*` keep their old names for now (labels
 only). Renaming them is separate, deferred work, like any key rename
 (see above).
