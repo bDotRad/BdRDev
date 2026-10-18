@@ -8,7 +8,7 @@ your environment that aren't otherwise obvious from inside the session.
 
 This project is part of a fleet with shared conventions — request
 handling, project layout, web look & feel, versioning (the version is
-the deployed **7-char commit SHA**), the **Edit / Save / Cancel**
+shown as **`YYYY.MM.DD_HHMM · <7-char SHA>`**, update time · deployed commit), the **Edit / Save / Cancel**
 pattern for editable tables, SSH key naming, and more. The canonical
 copies live in **`BdRDev/_Instructions/`** on the dev box (start at
 `Standards.md`); they are *not* copied into each project. Follow them

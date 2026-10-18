@@ -12,14 +12,29 @@ rules apply.
 - The **version** of a running app is the **7-character short commit
   SHA** of its deployed checkout. That SHA is the canonical version
   identifier — no separate version strings, tags, or `VERSION` files.
-- **How it's displayed:**
-  - Where an app renders the [standard header block](#standard-header-block),
-    the version line shows the SHA prefixed with the local build
-    timestamp: `YYYY.MM.DD_HHMM · <7-char-SHA>` — build time, a ` · `
-    separator, then the 7-char SHA. It turns amber when the running
-    build is behind the repo.
-  - A **footer** version line may stay SHA-only.
-  - Rendered small and un-emphasised either way.
+- **How it's displayed — everywhere a version is shown** (header, footer,
+  about box), for every app deployed from GitHub:
+  `YYYY.MM.DD_HHMM · <7-char-SHA>` — the **update timestamp**, a ` · `
+  separator, then the 7-char SHA. A bare SHA is not enough (Brad,
+  2026-10-18: "put the timestamp of the update next to the version").
+  In the header it turns amber when the running build is behind the repo.
+  Rendered small and un-emphasised.
+- **Update timestamp = when this box last moved to that version**, in the
+  box's local time — *not* the commit time, and not the process start
+  time. It answers "is my change live yet, and since when?". A restart or
+  reboot doesn't change it; a pull/deploy of a new commit does.
+  - **Apps run from a git checkout** (Flask etc.): the newest HEAD
+    reflog entry —
+    `git reflog -1 --date=format-local:%Y.%m.%d_%H%M --format=%gd HEAD`
+    → `HEAD@{2026.10.18_1507}`, strip the `HEAD@{…}`. Read it once at
+    startup and cache it, like the SHA (no autoreload, so it's stable for
+    the life of the process). Fall back to the commit time
+    (`git log -1 --format=%cd --date=format-local:%Y.%m.%d_%H%M`) if the
+    reflog is empty.
+  - **Apps that are built then published** (Vite, `publish.sh`,
+    `deploy.sh` → static files): the build/publish time, stamped into
+    the bundle or a `version.json` at build time. The build *is* the
+    update.
 - Where an app records deploy history (e.g. `srvhome`), a "version" in
   that history is the same 7-char SHA, shown with the deploy timestamp,
   commit title and commit description.
@@ -50,8 +65,8 @@ change fleet-wide, edit this section and re-run a rollout.
    bold ~28px. The **first word** is in `--text` (white); the rest is
    muted blue-grey `#7f97b8`. E.g. `BDR WEB GUI DEV`, `BDR AI GUI`.
 2. **Version line** — monospace ~14px, `#c7d0dc` (white-grey), format
-   `YYYY.MM.DD_HHMM · <7-char-SHA>` (local build timestamp · 7-char
-   short commit SHA). Turns amber (`--pending`) when the running build
+   `YYYY.MM.DD_HHMM · <7-char-SHA>` (update timestamp · 7-char short
+   commit SHA — see [Versioning](#versioning)). Turns amber (`--pending`) when the running build
    is behind the repo.
 3. **Deploy-status line** (indented under the version) — **only where the
    app has a running-vs-origin version check** (see graceful degradation

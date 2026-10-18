@@ -20,7 +20,7 @@ working in any project should just know they exist and apply.
 | [`FLEET.md`](FLEET.md) | the fleet map — boxes, what runs where, the SSH matrix |
 | [`Guardrails.md`](Guardrails.md) | what an unattended session must never do on its own (destructive / infra actions → Action block) |
 | [`SessionScope.md`](SessionScope.md) | how to size and run a session; context as working memory |
-| [`WebUI.md`](WebUI.md) | web look & feel, versioning (7-char SHA), the table-editing Edit/Save/Cancel pattern |
+| [`WebUI.md`](WebUI.md) | web look & feel, versioning (`update-time · 7-char SHA`), the table-editing Edit/Save/Cancel pattern |
 | [`ProjectSetup.md`](ProjectSetup.md) | the standard project folder shape; "Setup Project" |
 | [`Requests.md`](Requests.md) | the `_Requests/` intake + archive convention; the fleet-map-update step |
 | [`BdRDev.md`](BdRDev.md) | scheduler wake/kill orchestration (copied into other projects' CLAUDE.md context) |
