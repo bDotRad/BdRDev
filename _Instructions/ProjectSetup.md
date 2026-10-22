@@ -54,6 +54,10 @@ these conventions exist.
   put that material instead of it landing loose at the repo root or
   getting invented fresh per project.
 
+A non-trivial new project may also carry a **`Scope.md`** (repo root)
+-- what's in / out, milestones, decisions, done-when. Its required
+shape is in [`ProjectScope.md`](ProjectScope.md).
+
 None of this replaces a project's own free-form docs (`README.md`,
 `DESIGN_NOTES.md`, `CHANGELOG.md`, etc, as seen on `PlanBdRad`) -- those
 stay project-specific and aren't standardized here.

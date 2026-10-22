@@ -22,6 +22,7 @@ working in any project should just know they exist and apply.
 | [`SessionScope.md`](SessionScope.md) | how to size and run a session; context as working memory |
 | [`WebUI.md`](WebUI.md) | web look & feel, versioning (`update-time · 7-char SHA`), the table-editing Edit/Save/Cancel pattern |
 | [`ProjectSetup.md`](ProjectSetup.md) | the standard project folder shape; "Setup Project" |
+| [`ProjectScope.md`](ProjectScope.md) | the `Scope.md` document — in/out of scope, milestones, decisions, done-when |
 | [`Requests.md`](Requests.md) | the `_Requests/` intake + archive convention; the fleet-map-update step |
 | [`BdRDev.md`](BdRDev.md) | scheduler wake/kill orchestration (copied into other projects' CLAUDE.md context) |
 | [`SSH.md`](SSH.md) | fleet SSH key naming; Tailscale-SSH vs LAN-key |
