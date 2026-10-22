@@ -59,7 +59,21 @@ A wrong guess here is expensive to undo. A round-trip question is not.
 ## What you *can* do unattended
 
 - Read anything, anywhere on the box (and read-only over SSH).
+- Run **read-only checks over SSH on another box** — this is more than
+  just `cat`/`ls`: any command that only *observes* state and can't
+  start, stop, reload, or write anything counts. Examples: `curl` a
+  URL, `openssl x509 -noout ...` on a cert file, `tailscale serve
+  status`, `systemctl status` (status, not `start`/`stop`/`restart`/
+  `reload`), `journalctl` (read), `df`/`ps`/`ss`. This is how the
+  2026-09-18 cert-warning check on `BdRPiSrvDungeon` was diagnosed —
+  SSH in, read the live cert's issuer, compare to what was expected, no
+  changes made. Still never `sudo`, never anything from the "Never do"
+  list above, even read-only-looking flags on those commands.
 - Edit, build, and test within your own project.
 - `git commit` and `git push` **from `DEV`** for your own project.
-- Copy files to another box over SSH (not execute).
+- Copy files to another box over SSH (not execute a script there —
+  reading/comparing state via ad-hoc shell commands per the bullet
+  above is fine; running a deploy/setup script on the remote box is
+  not, even if the script itself doesn't need `sudo` internally,
+  because its effects land outside your project and outside `DEV`).
 - Write Action/Question blocks and `.claude-status/*` files.

@@ -58,9 +58,14 @@ inventing its own naming.
 
 ## Asking Brad to run SSH commands
 
-The unattended session can `ssh` to fleet boxes for read-only checks and
-file copies, but auto-mode blocks it from starting/restarting daemons on
-a remote host or running any `sudo`. When a request needs one of those,
+The unattended session can `ssh` to fleet boxes for **read-only checks
+and file copies** — see [`Guardrails.md`](Guardrails.md#what-you-can-do-unattended)
+for exactly what counts (any command that only observes state: `curl`,
+`openssl x509 -noout`, `tailscale serve status`, `systemctl status`,
+`journalctl` read, `cat`/`ls`/`df`/`ps`, etc.) — but auto-mode blocks it
+from starting/restarting daemons on a remote host, running a
+script/deploy step there, or running any `sudo`. When a request needs
+one of those,
 hand the commands back in the **Action block** format from
 [`Requests.md`](Requests.md#how-to-write-actions-and-questions-back-into-a-request-file)
 -- a quoted description above each command, numbered steps, `# on <box>`
@@ -102,7 +107,7 @@ The fleet has two ways to SSH between boxes and they fail differently:
 | `bdrdev_to_bdrwebguidevgit` | `github.com:bDotRad/BdRWebGUIDev.git` | BdRWebGUIDev repo deploy key, generated 2026-09-04. Comment `BdRDev-to-BdRWebGUIDevGIT`. **Not yet installed** as a deploy key on GitHub and **no `~/.ssh/config` alias yet** — the unattended session's classifier blocked the config edit, so both are handed to Brad in `BdRWebGUIDev/_Requests/rProject Setup.md`. Pushing via `gh` HTTPS credential helper until then. Intended alias: `github.com-bdrwebguidev`. |
 | ~~`id_ed25519_pi`~~ | `bdotrad@192.168.1.187` (`BdRadBirdDetector`) | **Key file missing from `~/.ssh` on this host as of 2026-09-06** — not carried over / removed in cleanup. Also `192.168.1.187` is on a different subnet from this host's `10.10.8.0/22` and the box isn't on the tailnet, so it's unreachable from here regardless of the key. Regenerate + reinstall in that Pi's `authorized_keys` if fleet-side access to BdRBirdDetector is needed again. |
 | `bdrdev_to_bdrpiamiserver` | `bdr@10.10.10.20` (`~/.ssh/config` alias `BdRPiAMI`; the box's own hostname is now `BdRPiSrvAMI`) | SSH into the AMI Raspberry Pi (Ubuntu 24.04 aarch64, replaces the retired VM `BdRSrvAMI`). **Regenerated 2026-09-05** — both halves re-dated then; the 2026-08-27 key was replaced. **LAN key auth confirmed working 2026-09-06**: `ssh BdRPiAMI` connects headless as `bdr`, public half is installed in the Pi's `authorized_keys`. The tailnet path to the same box (`bdr@100.86.25.88`) is *not* headless — see the Tailscale SSH section above. |
-| `bdrdev_to_bdrpidungeonserver` | `bdr@10.10.10.30` (`~/.ssh/config` alias `BdRPiDungeon`; box hostname `BdRPiSrvDungeon`) | SSH into the DUNGEON Raspberry Pi 5 (Debian 13 trixie, aarch64). Generated 2026-09-15, same pattern as `BdRPiAMI`. **LAN key auth confirmed working 2026-09-16**: `ssh BdRPiDungeon` connects headless as `bdr`, `.pub` derivation matches. |
+| `bdrdev_to_bdrpidungeonserver` | `bdr@10.10.10.30` (`~/.ssh/config` alias `BdRPiSrvRatsNest` (was `BdRPiDungeon`, still accepted); box hostname `BdRPiSrvRatsNest`) | SSH into the RATSNEST Raspberry Pi 5 (Debian 13 trixie, aarch64). Generated 2026-09-15, same pattern as `BdRPiAMI`. **LAN key auth confirmed working 2026-09-16**: `ssh BdRPiDungeon` connects headless as `bdr`, `.pub` derivation matches. Alias renamed to `BdRPiSrvRatsNest` 2026-10-11 (Brad); the key file keeps its old name. |
 | `bdrpisrvdungeon_to_bdratsnestgit` *(generated on `DUNGEON`, not this host)* | `github.com:bDotRad/BdRatsNest.git` | Read-only deploy key installed on the private `BdRatsNest` repo so `DUNGEON` can `git pull` it directly. New key, generated 2026-09-15/16 during the box's provisioning — doesn't replace anything. |
 | ~~`id_ed25519`~~ | unknown | **No longer present in `~/.ssh` on this host as of 2026-09-06** — the unexplained generic key was removed. Resolved. |
 
