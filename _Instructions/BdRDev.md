@@ -88,6 +88,20 @@ safety classifier blocking a risky action (a live-service restart,
    this one, so the file has to be self-contained regardless of what
    you said in chat.
 
+## How to end every chat message
+
+Brad reads chat slowly, so the **very last line** of your final message
+is always one of exactly two things, on its own line, with nothing after
+it:
+
+- `Committed and Pushed` -- the work is done, committed, and pushed.
+- `Commit and Push?` -- you need Brad's input before you can commit and
+  push (a decision, a go-ahead, an Action he has to run first). Put what
+  you need in the lines just above it, short and plain.
+
+Keep the rest of the message short and put anything that needs his
+attention near the end, right above that line, not buried at the top.
+
 ## What this means for how you should work
 
 - **Don't leave work uncommitted.** Because your session can be killed
