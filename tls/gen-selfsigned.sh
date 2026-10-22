@@ -16,7 +16,9 @@ CRT="$DIR/bdrpisrvdev.local.crt"
 KEY="$DIR/bdrpisrvdev.local.key"
 STAMP="$(date +%Y%m%d%H%M%S)"
 
-LANIP="$(ip -4 -o addr show wlan0 2>/dev/null | awk '{print $4}' | cut -d/ -f1)"
+# Source IP of the preferred default route (eth0 when wired), not a hardcoded
+# interface -- the LAN IP has moved between eth0 and wlan0 before.
+LANIP="$(ip -4 route get 1.1.1.1 2>/dev/null | grep -oP 'src \K\S+' | head -1)"
 SAN="DNS:bdrpisrvdev.local,DNS:bdrpisrvdev,DNS:bdrdev.local,DNS:BdRDev,DNS:localhost,IP:127.0.0.1"
 [[ -n "$LANIP" ]] && SAN="$SAN,IP:$LANIP"
 

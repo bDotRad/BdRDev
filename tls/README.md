@@ -32,7 +32,10 @@ sudo systemctl restart nginx   # Brad — no sudo in Claude sessions
 ```
 
 Rerun after: the LAN IP changes (DHCP renewal — this box has moved
-before, `10.10.8.11` → `10.10.8.20`), or a new hostname alias needs
+before, `10.10.8.11` → `10.10.8.20` → `10.10.10.10`, the Deco
+reservation for the wired `eth0`; serve on one interface only — with both
+`eth0` and `wlan0` up on the same /22, replies leave via `eth0` whatever
+IP the request came in on and the Deco drops them), or a new hostname alias needs
 adding to the SAN list.
 
 ## Tailnet cert
