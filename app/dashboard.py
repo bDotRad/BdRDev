@@ -25,6 +25,7 @@ import time
 
 from flask import Flask, abort, jsonify, render_template, request, send_file
 
+import access_scan
 import common
 import fleet_db
 
@@ -571,6 +572,38 @@ def api_ecosystem_save():
         "supabase_configured": fleet_db.is_configured(),
         "fallback_reason": None if source == "supabase" else fleet_db.last_error(),
     })
+
+
+_access_scan = {"running": False, "error": None}
+_access_scan_lock = threading.Lock()
+
+
+@app.route("/api/access")
+def api_access():
+    return jsonify({"matrix": access_scan.load_matrix(), "scanning": _access_scan["running"],
+                    "error": _access_scan["error"]})
+
+
+@app.route("/api/access/scan", methods=["POST"])
+def api_access_scan():
+    # A scan SSHes to every box and takes ~45s, so it runs in a thread;
+    # the page polls GET /api/access until "scanning" goes false.
+    with _access_scan_lock:
+        if _access_scan["running"]:
+            return jsonify({"ok": True, "already_running": True})
+        _access_scan.update(running=True, error=None)
+
+    def _scan():
+        try:
+            access_scan.run_scan(fleet_db.fetch_ecosystem() or common.load_ecosystem())
+            common.log_event("BdRDev", "access_scanned")
+        except Exception as e:  # surface it on the tab rather than dying silently
+            _access_scan["error"] = "%s: %s" % (type(e).__name__, e)
+        finally:
+            _access_scan["running"] = False
+
+    threading.Thread(target=_scan, daemon=True).start()
+    return jsonify({"ok": True})
 
 
 @app.route("/api/admin/status")

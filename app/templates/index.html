@@ -278,6 +278,37 @@
   }
   .eco2-table td.eco2-yn.eco2-edit { cursor: pointer; }
 
+  /* Ecosystem Access tab -- source x target reachability matrix */
+  #access-panel {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 10px; padding: 18px 20px;
+  }
+  #access-legend { margin: 8px 0; line-height: 1.6; }
+  #access-issues { margin: 10px 0; }
+  #access-issues div { color: var(--waiting); font-size: 13px; margin: 2px 0; }
+  #access-detail { min-height: 18px; margin: 6px 0; color: var(--text); }
+  .acc-y { color: var(--processing); font-weight: 700; }
+  .acc-ro { color: var(--accent); font-weight: 700; }
+  .acc-w { color: var(--waiting); font-weight: 700; }
+  .acc-n { color: #f87171; }
+  .acc-dim { color: var(--text-dim); }
+  .acc-table { border-collapse: collapse; font-size: 12px; }
+  .acc-table th, .acc-table td { border: 1px solid var(--card-border); padding: 3px 5px; white-space: nowrap; }
+  .acc-table thead th {
+    color: var(--text-dim); font-weight: 600; font-size: 11px; background: #0b0d11; text-align: center;
+  }
+  .acc-table th.acc-srv { color: var(--text); text-transform: uppercase; letter-spacing: 0.03em; }
+  .acc-table th.acc-sub { font-size: 10px; padding: 2px 4px; }
+  .acc-table tbody th { background: #0b0d11; text-align: left; font-weight: 600; position: sticky; z-index: 1; }
+  .acc-table tbody th.acc-rsrv { left: 0; color: var(--text-dim); text-transform: uppercase; font-size: 11px; vertical-align: top; }
+  .acc-table tbody th.acc-rprj { left: var(--acc-srv-w, 130px); color: var(--text); }
+  .acc-table td { text-align: center; cursor: pointer; min-width: 22px; }
+  .acc-table td:hover { background: rgba(255,255,255,0.06); }
+  .acc-table td.acc-self { background: rgba(79,140,255,0.10); }
+  .acc-table .acc-gl { border-left: 2px solid var(--text-dim); }
+  .acc-table .acc-pl { border-left: 2px solid #3a404d; }
+  .acc-table tr.acc-gt td, .acc-table tr.acc-gt th { border-top: 2px solid var(--text-dim); }
+  .acc-table td.acc-sel { outline: 2px solid var(--accent); outline-offset: -2px; }
+
   /* Workspace tab -- sidebar of projects + full-width per-project pane */
   #workspace-layout {
     display: flex; border: 1px solid var(--card-border); border-radius: 10px;
@@ -694,6 +725,7 @@
     <button class="tab-btn" id="tab-btn-admin" onclick="switchTab('admin')">Admin</button>
     <button class="tab-btn" id="tab-btn-ecosystem" onclick="switchTab('ecosystem')">Ecosystem</button>
     <button class="tab-btn" id="tab-btn-ecotree" onclick="switchTab('ecotree')">Ecosystem Tree</button>
+    <button class="tab-btn" id="tab-btn-access" onclick="switchTab('access')">Ecosystem Access</button>
     <button class="tab-btn" id="tab-btn-independent" onclick="openConsole(INDEPENDENT_SESSION)">CLAUDE</button>
     <a class="help-link" href="/help">Help</a>
     <a class="help-link help-link-extra" href="/help-simple">Help for Retards</a>
@@ -889,6 +921,32 @@
     <div id="ecotree-canvas"><div class="empty-state">Loading&hellip;</div></div>
   </div>
 
+  <div id="tab-panel-access" class="tab-panel">
+    <div id="access-panel">
+      <div class="eco-grid-head">
+        <h2>Who can reach whom</h2>
+        <div class="eco-actions">
+          <button class="btn" type="button" id="access-scan-btn" onclick="accessScan()">Rescan</button>
+          <span id="access-status" class="sql-meta"></span>
+        </div>
+      </div>
+      <div class="sql-meta" id="access-legend">
+        Rows = the chat project (a checkout on a box running Claude Code) doing the reaching;
+        columns = the target. <b>SSH</b>: <span class="acc-y">Y</span> works ·
+        <span class="acc-w">!</span> works but the ssh alias is missing/stale ·
+        <span class="acc-n">N</span> no · <span class="acc-dim">=</span> same box.
+        <b>FLD</b> / <b>DB</b>: <span class="acc-y">RW</span> · <span class="acc-ro">RO</span> ·
+        <span class="acc-n">N</span> · blank = target has no DB.
+        <span class="acc-dim">?</span> = box not scanned. Hover or click a cell for the why.
+        SSH from DEV is dialled live; from other boxes it's inferred (key in target's
+        <code>authorized_keys</code> + port 22 reachable) -- leaf boxes are never made to SSH out.
+      </div>
+      <div id="access-issues"></div>
+      <div id="access-detail" class="sql-meta"></div>
+      <div class="eco2-scroll"><table class="acc-table" id="access-table"></table></div>
+    </div>
+  </div>
+
   <div id="sql-overlay">
     <div id="sql-modal">
       <h3 id="sql-title">SQL output</h3>
@@ -1017,6 +1075,7 @@ const EVENT_LABELS = {
   request_shelved_deleted: 'shelved request deleted',
   dashboard_restart_requested: 'dashboard restart requested',
   ecosystem_updated: 'fleet data updated',
+  access_scanned: 'ecosystem access scanned',
 };
 
 const INDEPENDENT_SESSION = '_IndependentClaude';
@@ -1031,7 +1090,7 @@ let ecoConfigured = false;
 let ecoFallbackReason = null;
 let ecoOptions = {};
 
-const TAB_NAMES = ['projects', 'processing', 'workspace', 'log', 'admin', 'ecosystem', 'ecotree'];
+const TAB_NAMES = ['projects', 'processing', 'workspace', 'log', 'admin', 'ecosystem', 'ecotree', 'access'];
 
 let procPollTimer = null;
 
@@ -1044,6 +1103,7 @@ function switchTab(name) {
   try { localStorage.setItem('bdrdev-tab', name); } catch (e) { /* ignore */ }
   if (name === 'ecosystem') { if (ecoData === null) loadEcosystem(); else renderEcoView(); }
   if (name === 'ecotree') { if (ecoData === null) loadEcosystem(); else renderEcoTree(); }
+  if (name === 'access') loadAccess();
   if (name === 'workspace') enterWorkspace();
   else stopWsConsolePoll();
   if (name === 'processing') {
@@ -2339,6 +2399,105 @@ function ecoRemoveRow(kind, i) {
   if (ecoData[kind]) ecoData[kind].splice(i, 1);
   ecoDirty();
   renderEcoView();
+}
+
+// ---- Ecosystem Access tab ---------------------------------------------------
+// Source (row) x target (column) matrix from GET /api/access, built by
+// app/access_scan.py. Columns are grouped Server > Project > SSH/FLD/DB;
+// rows are grouped Server > Project.
+let accessData = null;
+let accessPollTimer = null;
+
+async function loadAccess() {
+  let data;
+  try { data = await (await fetch('/api/access')).json(); }
+  catch (e) { document.getElementById('access-status').textContent = 'Load failed: ' + e; return; }
+  accessData = data.matrix;
+  const st = document.getElementById('access-status');
+  const btn = document.getElementById('access-scan-btn');
+  btn.disabled = data.scanning;
+  if (data.scanning) st.textContent = 'Scanning every box (~45s)…';
+  else if (data.error) st.textContent = 'Last scan failed: ' + data.error;
+  else st.textContent = accessData ? `Scanned ${accessData.scanned_at} (${accessData.duration_s}s)` : 'Never scanned — hit Rescan.';
+  if (data.scanning && !accessPollTimer) accessPollTimer = setInterval(loadAccess, 3000);
+  if (!data.scanning && accessPollTimer) { clearInterval(accessPollTimer); accessPollTimer = null; }
+  renderAccess();
+}
+
+async function accessScan() {
+  document.getElementById('access-scan-btn').disabled = true;
+  await fetch('/api/access/scan', { method: 'POST' });
+  loadAccess();
+}
+
+function accessCls(kind, v) {
+  if (v === 'Y' || v === 'RW') return 'acc-y';
+  if (v === 'RO') return 'acc-ro';
+  if (v === '!') return 'acc-w';
+  if (v === 'N') return 'acc-n';
+  return 'acc-dim';
+}
+
+function renderAccess() {
+  const table = document.getElementById('access-table');
+  const d = accessData;
+  document.getElementById('access-issues').innerHTML = d
+    ? d.issues.map(i => `<div>&#9888; ${escapeHtml(i)}</div>`).join('') : '';
+  if (!d) { table.innerHTML = ''; return; }
+  const short = s => s.replace(/^BdRPiSrv/, '');
+  const cols = d.nodes;
+  const rows = d.nodes.filter(n => n.row);
+  const bySrv = (list) => d.servers.map(s => ({ s, items: list.filter(n => n.server === s.name) }))
+                                   .filter(g => g.items.length);
+  const colGroups = bySrv(cols), rowGroups = bySrv(rows);
+  const firstOfSrv = new Set(colGroups.map(g => g.items[0].id));
+
+  let h = '<thead><tr><th rowspan="3" colspan="2">from &darr; &nbsp; to &rarr;</th>';
+  for (const g of colGroups) {
+    const tip = g.s.scanned ? `${g.s.hostname} · ${g.s.ips.join(', ')}` : 'not scanned: ' + (g.s.error || '');
+    h += `<th class="acc-srv acc-gl" colspan="${g.items.length * 3}" title="${escapeHtml(tip)}">${escapeHtml(short(g.s.name))}</th>`;
+  }
+  h += '</tr><tr>';
+  for (const n of cols) h += `<th colspan="3" class="${firstOfSrv.has(n.id) ? 'acc-gl' : 'acc-pl'}">${escapeHtml(n.project)}</th>`;
+  h += '</tr><tr>';
+  for (const n of cols) {
+    h += `<th class="acc-sub ${firstOfSrv.has(n.id) ? 'acc-gl' : 'acc-pl'}">SSH</th><th class="acc-sub">FLD</th><th class="acc-sub">DB</th>`;
+  }
+  h += '</tr></thead><tbody>';
+  for (const g of rowGroups) {
+    g.items.forEach((r, i) => {
+      h += `<tr class="${i === 0 ? 'acc-gt' : ''}">`;
+      if (i === 0) h += `<th class="acc-rsrv" rowspan="${g.items.length}">${escapeHtml(short(g.s.name))}</th>`;
+      h += `<th class="acc-rprj">${escapeHtml(r.project)}</th>`;
+      const row = d.cells[r.id] || {};
+      for (const c of cols) {
+        const cell = row[c.id] || {};
+        const self = r.id === c.id ? ' acc-self' : '';
+        ['ssh', 'fld', 'db'].forEach((k, j) => {
+          const x = cell[k] || { v: '', note: '' };
+          const edge = j === 0 ? (firstOfSrv.has(c.id) ? ' acc-gl' : ' acc-pl') : '';
+          h += `<td class="${accessCls(k, x.v)}${self}${edge}" data-r="${escapeHtml(r.id)}" data-c="${escapeHtml(c.id)}" `
+             + `title="${escapeHtml(k.toUpperCase() + ': ' + (x.note || ''))}">${escapeHtml(x.v)}</td>`;
+        });
+      }
+      h += '</tr>';
+    });
+  }
+  table.innerHTML = h + '</tbody>';
+  // Row-header stickiness: the project column sits just right of the server column.
+  const srvTh = table.querySelector('th.acc-rsrv');
+  if (srvTh) table.style.setProperty('--acc-srv-w', srvTh.offsetWidth + 'px');
+  table.onclick = (e) => {
+    const td = e.target.closest('td[data-r]');
+    if (!td) return;
+    table.querySelectorAll('td.acc-sel').forEach(x => x.classList.remove('acc-sel'));
+    td.classList.add('acc-sel');
+    const cell = (d.cells[td.dataset.r] || {})[td.dataset.c] || {};
+    const part = k => `<b>${k.toUpperCase()}</b> ${escapeHtml((cell[k] || {}).v || '–')} — ${escapeHtml((cell[k] || {}).note || '')}`;
+    document.getElementById('access-detail').innerHTML =
+      `<b>${escapeHtml(td.dataset.r)}</b> &rarr; <b>${escapeHtml(td.dataset.c)}</b><br>`
+      + ['ssh', 'fld', 'db'].map(part).join('<br>');
+  };
 }
 
 async function loadEcosystem() {
