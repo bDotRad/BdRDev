@@ -60,7 +60,8 @@ The Pi keys off the leading six digits. Files without them are ignored.
   connector. The connector only exists in interactive sessions.
 - Dispatched so far: `261018 RatsNest Gear Inventory` → new project
   `BdRTech` (RATSNEST host); `261023 BdRBoostLab` → existing `BdRapps`
-  (new page, Firebase `Apps`).
+  (new page, Firebase `Apps`); `261027 BdRNotes` → new project
+  `BdRNotes` (RATSNEST host, viewer in the `bdrapps` Firebase project).
 
 ## Requests.md and Actions.md format
 
