@@ -150,7 +150,7 @@ Nothing here runs on a fleet box. Authored on `DEV`, deployed from `DEV`
 | what | handle | URL(s) | status |
 |---|---|---|---|
 | BdRapps — static web apps (BdRdraw, BdRbowtie, carry-panel-demo) | `Apps` | `https://bdrapps.web.app` (Firebase project `bdrapps`) | live |
-| BdRStuff — linked, searchable pages over BdRNotes' `notes/` | `Stuff` | `https://bdrstuff.web.app` (Hosting site `bdrstuff` in `bdrapps`); `stuff.bdotrad.me` planned | live |
+| BdRStuff — linked, searchable pages over BdRNotes' `notes/` | `Stuff` | `https://stuff.bdotrad.me` (Hosting site `bdrstuff` in `bdrapps`; also `bdrstuff.web.app`) | live |
 
 In Supabase these rows have `runs_on_server_id = NULL` (no box) and the
 public URL in `local_url`, since the schema has no column for an
