@@ -150,8 +150,9 @@ Nothing here runs on a fleet box. Authored on `DEV`, deployed from `DEV`
 | what | handle | URL(s) | status |
 |---|---|---|---|
 | BdRapps — static web apps (BdRdraw, BdRbowtie, carry-panel-demo) | `Apps` | `https://bdrapps.web.app` (Firebase project `bdrapps`) | live |
+| BdRStuff — linked, searchable pages over BdRNotes' `notes/` | `Stuff` | `https://bdrstuff.web.app` (Hosting site `bdrstuff` in `bdrapps`); `stuff.bdotrad.me` planned | live |
 
-In Supabase this row has `runs_on_server_id = NULL` (no box) and the
+In Supabase these rows have `runs_on_server_id = NULL` (no box) and the
 public URL in `local_url`, since the schema has no column for an
 off-fleet/public URL.
 
@@ -182,6 +183,7 @@ write an Action block for Brad ([`Requests.md`](Requests.md)).
 | `BdRBirdDetector` | `Bird` | `DEV` | `BIRD` (pull) | `BdRBirdDetector` | SQLite on box + Firebase |
 | `BdRWebGUIDev` | `WebGUI` | `DEV` | `DEV` | `BdRWebGUIDev` | none |
 | `BdRapps` | `Apps` | `DEV` | Firebase Hosting (`./publish.sh` from `DEV`) — no fleet box | `BdRapps` (submodules `BdRdraw`, `BdotRBowTie`) | Firebase Firestore |
+| `BdRStuff` | `Stuff` | `DEV` | Firebase Hosting site `bdrstuff` (`./publish.sh` from `DEV`) — no fleet box | `BdRStuff` | reads Firestore `notes/` (BdRNotes) |
 | `BdRPiSrvAMI` | `AMI-cfg` | `DEV` | `AMI` (pull, as `~/projects/BdRPiAMI/`) | `BdRPiSrvAMI` | SQLite `srvhome.db` |
 | `BdRPiSrvRatsNest` | `RatsNest-cfg` | `DEV` | `RATSNEST` (pull) | `BdRPiSrvRatsNest` *(was `BdRPiSrvDungeon` until 2026-10-11)* | none |
 | `BdRVSrvDev` | `DEV-cfg` | `DEV` | `DEV` | *(check repo)* | none |

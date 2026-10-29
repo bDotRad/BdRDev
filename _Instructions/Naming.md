@@ -58,6 +58,7 @@ Canonical = the repo directory name. Handle is for tables and prose.
 | `Bird` | `BdRBirdDetector` | distributed acoustic bird detection / localization | `BIRD` |
 | `WebGUI` | `BdRWebGUIDev` | one-page web-GUI sandbox, dev only | `DEV` |
 | `Apps` | `BdRapps` | static web apps shared with other people (BdRdraw, BdRbowtie, carry-panel-demo), `https://bdrapps.web.app` | Firebase Hosting *(no fleet box)* |
+| `Stuff` | `BdRStuff` | linked, searchable front end to the BdRDrop → BdRNotes library, `https://bdrstuff.web.app` (`stuff.bdotrad.me` planned) | Firebase Hosting *(no fleet box)* |
 | `AMI-cfg` | `BdRPiSrvAMI` | server-config repo for the AMI box (nginx / TLS / provisioning) + **the canonical home of `srvhome`** (`srvhome/`) | `AMI` (pull-only) |
 | `RatsNest-cfg` | `BdRPiSrvRatsNest` | server-config repo for the RATSNEST box (nginx / TLS / tailscale / provisioning) + its `srvhome` landing page; was `BdRPiSrvDungeon` until 2026-10-11 | `RATSNEST` (pull-only) |
 | `DEV-cfg` | `BdRVSrvDev` | server-config repo for the DEV box (nginx / TLS / tailnet front door / CloudCLI) | `DEV` |
