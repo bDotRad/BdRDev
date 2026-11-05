@@ -25,6 +25,7 @@ working in any project should just know they exist and apply.
 | [`ProjectScope.md`](ProjectScope.md) | the `Scope.md` document — in/out of scope, milestones, decisions, done-when |
 | [`Requests.md`](Requests.md) | the `_Requests/` intake + archive convention; the fleet-map-update step |
 | [`BdRDev.md`](BdRDev.md) | scheduler wake/kill orchestration (copied into other projects' CLAUDE.md context) |
+| [`Comms.md`](Comms.md) | `_Comms.md`: one session per project at a time (the claim line), plus a message log between sessions |
 | [`SSH.md`](SSH.md) | fleet SSH key naming; Tailscale-SSH vs LAN-key |
 | [`AppServerSync.md`](AppServerSync.md) | funnelling app-server edits back through the dev box |
 | server provisioning | worked example: `~/projects/BdRPiAMI-PROVISION.md` |

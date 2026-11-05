@@ -61,7 +61,9 @@ The Pi keys off the leading six digits. Files without them are ignored.
 - Dispatched so far: `261018 RatsNest Gear Inventory` → new project
   `BdRTech` (RATSNEST host); `261023 BdRBoostLab` → existing `BdRapps`
   (new page, Firebase `Apps`); `261027 BdRNotes` → new project
-  `BdRNotes` (RATSNEST host, viewer in the `bdrapps` Firebase project).
+  `BdRNotes` (RATSNEST host, viewer in the `bdrapps` Firebase project);
+  `261105 Filament Dryer` → existing `BdRapps` (new page
+  `/filament_dryer/`, simulator-first per Brad 2026-11-06).
 
 ## Requests.md and Actions.md format
 

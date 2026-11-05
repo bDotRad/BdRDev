@@ -503,6 +503,73 @@ def pending_count(project):
     return ready
 
 
+# ---- _Comms.md claim (one session works a project at a time) ------------------
+#
+# Line 1 of <project>/_Comms.md is either `FREE` or
+# `CLAIMED by <who> · <YYYY-MM-DD HH:MM> · <what>` (local time). The rest of
+# the file is a message log the scheduler never touches. A claim older than
+# COMMS_CLAIM_STALE_SECONDS counts as abandoned. See _Instructions/Comms.md.
+
+COMMS_FILENAME = "_Comms.md"
+COMMS_CLAIM_STALE_SECONDS = 2 * 60 * 60
+SCHEDULER_CLAIMANT = "scheduler"
+_CLAIM_RE = re.compile(r"^CLAIMED by (\S+).*?(\d{4}-\d{2}-\d{2} \d{2}:\d{2})")
+_COMMS_TEMPLATE_BODY = (
+    "\n"
+    "# Comms\n"
+    "\n"
+    "Line 1 is the claim. One session works this project at a time. See\n"
+    "BdRDev/_Instructions/Comms.md.\n"
+    "\n"
+    "## Log\n"
+)
+
+
+def read_claim(project):
+    """{"who", "since", "stale"} for the project's current claim, or None if
+    it's FREE / missing / unparseable."""
+    m = _CLAIM_RE.match(_first_line(PROJECTS_DIR / project / COMMS_FILENAME))
+    if not m:
+        return None
+    try:
+        since = datetime.strptime(m.group(2), "%Y-%m-%d %H:%M")
+    except ValueError:
+        return None
+    age = (datetime.now() - since).total_seconds()
+    return {"who": m.group(1), "since": since, "stale": age > COMMS_CLAIM_STALE_SECONDS}
+
+
+def claimed_by_other(project, me=SCHEDULER_CLAIMANT):
+    """Live (non-stale) claim held by someone other than `me`."""
+    claim = read_claim(project)
+    return bool(claim and not claim["stale"] and claim["who"] != me)
+
+
+def _write_claim_line(project, line):
+    path = PROJECTS_DIR / project / COMMS_FILENAME
+    try:
+        if path.exists():
+            body = path.read_text(errors="replace").split("\n", 1)
+            rest = body[1] if len(body) > 1 else "\n"
+        else:
+            rest = _COMMS_TEMPLATE_BODY
+        path.write_text(line + "\n" + rest)
+    except OSError:
+        pass
+
+
+def write_claim(project, who, what):
+    stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    _write_claim_line(project, f"CLAIMED by {who} · {stamp} · {what}")
+
+
+def release_claim(project, who):
+    """Set the claim back to FREE, but only if `who` still holds it."""
+    claim = read_claim(project)
+    if claim and claim["who"] == who:
+        _write_claim_line(project, "FREE")
+
+
 # ---- Archived requests (browse-only) ------------------------------------------
 
 def find_archive_dir(project):

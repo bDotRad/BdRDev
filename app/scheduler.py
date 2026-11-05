@@ -44,6 +44,7 @@ MAX_CONCURRENT = 2             # how many projects can have an active Claude Cod
 EMPTY_GRACE_SECONDS = 30       # wait this long after first empty scan before rechecking
 POLL_TICK_SECONDS = 5          # how often the main loop re-scans all active projects
 IDLE_POOL_SLEEP = 5            # how long to sleep if no projects are selected (or none have work)
+CLAIM_REFRESH_SECONDS = 10 * 60  # re-stamp our _Comms.md claim this often while a session works
 
 # Claude Code's TUI runs on tmux's alternate screen, which tmux never adds to
 # scrollback history -- capture-pane can only ever return what's currently
@@ -64,7 +65,10 @@ SCAN_PROMPT_TAIL = (
     "hit a decision only Brad can make, or any interactive prompt (a permission "
     "dialog, the AskUserQuestion tool, etc.), do NOT wait on it: cancel it, "
     "write your questions into the request file, set that file's first line to "
-    "WAITING RESPONSE, and end your turn. See _Instructions/BdRDev.md."
+    "WAITING RESPONSE, and end your turn. See _Instructions/BdRDev.md. "
+    "The scheduler has claimed this project for you in _Comms.md (line 1, "
+    "`CLAIMED by scheduler`); read its log first, and if someone else's claim "
+    "replaces it, stop editing and follow _Instructions/Comms.md."
 )
 
 SCAN_PROMPT_GENERIC_HEAD = (
@@ -157,15 +161,35 @@ def _wait_until_ready(session, timeout=SPAWN_READY_TIMEOUT):
         if SPAWN_READY_MARKER in pane:
             return True
         if "Yes, I trust this folder" in pane:
-            # First-run trust prompt -- default option is already highlighted.
-            subprocess.run(["tmux", "send-keys", "-t", session, "Enter"])
+            # First-run trust prompt. Claude Code now highlights "No, exit"
+            # by default (Enter on it kills the session), so move the cursor
+            # until "Yes" is the highlighted line, then confirm.
+            yes_selected = any(
+                "❯" in line and "Yes, I trust this folder" in line
+                for line in pane.splitlines()
+            )
+            key = "Enter" if yes_selected else "Down"
+            subprocess.run(["tmux", "send-keys", "-t", session, key])
         time.sleep(0.5)
     return False
+
+
+def claim_for_scheduler(project):
+    try:
+        titles = [
+            item["title"]
+            for item in common.list_requests(project)
+            if item["status"] in ("Ready", "Processing")
+        ]
+    except Exception:
+        titles = []
+    common.write_claim(project, common.SCHEDULER_CLAIMANT, ", ".join(titles) or "_Requests")
 
 
 def spawn_session(project):
     session = f"{common.TMUX_SESSION_PREFIX}{project}"
     project_dir = common.PROJECTS_DIR / project
+    claim_for_scheduler(project)
     subprocess.run([
         "tmux", "new-session", "-d", "-s", session,
         "-x", str(SESSION_COLS), "-y", str(SESSION_ROWS),
@@ -209,6 +233,7 @@ def send_prompt(project):
 def hibernate(project):
     session = f"{common.TMUX_SESSION_PREFIX}{project}"
     subprocess.run(["tmux", "kill-session", "-t", session], capture_output=True)
+    common.release_claim(project, common.SCHEDULER_CLAIMANT)
 
 
 def pick_next_candidate(pool, active, start_idx, last_seen_pending):
@@ -229,6 +254,10 @@ def pick_next_candidate(pool, active, start_idx, last_seen_pending):
             if pending > 0:
                 common.log_event(project, "requests_ready", {"pending": pending})
             last_seen_pending[project] = pending
+        if pending > 0 and not tmux_alive(project) and common.claimed_by_other(project):
+            # Another session (e.g. Brad's interactive one) holds the
+            # project -- don't start a second one on top of it.
+            continue
         if pending > 0:
             return project, (idx + 1) % n
     return None, start_idx
@@ -277,10 +306,26 @@ def main_loop():
 
             if pending > 0:
                 just_spawned = False
-                if not tmux_alive(project):
+                alive = tmux_alive(project)
+                if common.claimed_by_other(project):
+                    # Someone else claimed it in _Comms.md. Never spawn on
+                    # top of them, and don't type into our own session
+                    # either -- it reads the claim and stands down itself.
+                    if not alive:
+                        common.log_event(project, "claimed_elsewhere", {"pending": pending})
+                        del active[project]
+                    continue
+                if not alive:
                     common.log_event(project, "session_waking", {"pending": pending})
                     spawn_session(project)
                     just_spawned = True
+                    tracked["claim_refreshed"] = time.time()
+                elif time.time() - tracked.get("claim_refreshed", 0) >= CLAIM_REFRESH_SECONDS:
+                    # Keep our claim fresh so a long job never reads as
+                    # abandoned (also re-claims a session that predates a
+                    # scheduler restart).
+                    claim_for_scheduler(project)
+                    tracked["claim_refreshed"] = time.time()
                 # Only nudge once per wake, and again if *more* items showed
                 # up since the last nudge -- not on every poll tick. Claude
                 # Code may still be mid-task (or showing a permission

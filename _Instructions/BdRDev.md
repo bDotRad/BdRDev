@@ -29,6 +29,17 @@ say otherwise.
   no LLM involved. Don't expect either one to interpret natural language;
   they only read files and send fixed strings into tmux.
 
+## Read `_Comms.md` before you edit anything
+
+Only one session works a project at a time. Line 1 of
+`<project>/_Comms.md` says who holds it (`FREE`, or `CLAIMED by
+scheduler|interactive · time · task`). If someone else holds a live
+claim, don't touch project files: leave a log line and stop (or ask
+Brad, if you're interactive). Claim it when you start, re-read it
+before big writes, and set it back to `FREE` when you finish. Full
+rules, plus messaging another live session directly:
+`BdRDev/_Instructions/Comms.md`.
+
 ## How you get woken up and put to sleep
 
 1. The scheduler notices files in this project's `requests/` folder.
