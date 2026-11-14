@@ -63,7 +63,8 @@ The Pi keys off the leading six digits. Files without them are ignored.
   (new page, Firebase `Apps`); `261027 BdRNotes` → new project
   `BdRNotes` (RATSNEST host, viewer in the `bdrapps` Firebase project);
   `261105 Filament Dryer` → existing `BdRapps` (new page
-  `/filament_dryer/`, simulator-first per Brad 2026-11-06).
+  `/filament_dryer/`, simulator-first per Brad 2026-11-06);
+  `261115 BdRPropertyLab` → existing `BdRapps` (new page `/property_lab/`).
 
 ## Requests.md and Actions.md format
 
