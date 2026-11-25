@@ -186,7 +186,7 @@ _PROJECT_STATUSES = ("planned", "building", "deployed", "live")
 DEFAULT_ECOSYSTEM = {
     "servers": [
         {
-            "name": "BdRPiSrvDev", "nickname": "", "tag": "this host, local", "address": "10.10.8.11",
+            "name": "BdRPiSrvDev", "nickname": "", "tag": "this host, local", "address": "10.10.11.10",
             "tailscale": "100.116.147.74",
             "local_url": "https://bdrpisrvdev.local",
             "ts_url": "https://bdrpisrvdev.tail0ed3f6.ts.net",
@@ -200,7 +200,7 @@ DEFAULT_ECOSYSTEM = {
             ),
         },
         {
-            "name": "BdRPiSrvAMI", "nickname": "", "tag": "Raspberry Pi 8GB", "address": "10.10.10.20",
+            "name": "BdRPiSrvAMI", "nickname": "", "tag": "Raspberry Pi 8GB", "address": "10.10.11.11",
             "tailscale": "100.86.25.88",
             "local_url": "https://bdrpiami.local",
             "ts_url": "https://bdrpisrvami.tail0ed3f6.ts.net",

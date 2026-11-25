@@ -12,7 +12,7 @@ inventing its own naming.
   almost always `bdrdev` (this host) unless the key is generated
   elsewhere and copied in. **2026-09-06 note**: this host is now a
   physical Raspberry Pi with machine hostname `bdrpisrvdev` (tailnet
-  node `bdrpisrvdev`, `bdrpisrvdev.tail0ed3f6.ts.net`, LAN `10.10.8.11`
+  node `bdrpisrvdev`, `bdrpisrvdev.tail0ed3f6.ts.net`, LAN `10.10.11.10` (was `10.10.8.11`)
   on `wlan0`/DHCP). `BdRDev` remains the *project/app* name. The earlier
   planned `BdRSrvDev` VM-style hostname never happened — the box was
   replaced by a Pi instead. Existing keys below keep the `bdrdev_`
@@ -51,7 +51,7 @@ inventing its own naming.
   ssh-keygen -y output before treating it as ground truth.
 - **"Pi" in names/comments is fine now — the whole fleet is Pis.** This
   host (`bdrpisrvdev`) and the AMI box (`bdrpisrvami` / on-box hostname
-  `BdRPiSrvAMI`, LAN `10.10.10.20`) are both physical Raspberry Pis, as
+  `BdRPiSrvAMI`, LAN `10.10.11.11`, was `10.10.10.20`) are both physical Raspberry Pis, as
   is `BdRadBirdDetector` at `192.168.1.187` (BdRBirdDetector project).
   The old rule against "Pi" in names dated from when this host was a
   VM/box; it no longer applies.
@@ -77,7 +77,7 @@ line Brad will paste.
 
 The fleet has two ways to SSH between boxes and they fail differently:
 
-- **Key-based SSH over the LAN** (e.g. `ssh BdRPiAMI` → `bdr@10.10.10.20`
+- **Key-based SSH over the LAN** (e.g. `ssh BdRPiAMI` → `bdr@10.10.11.11`
   with `bdrdev_to_bdrpiamiserver`): works headless, no prompt. This is
   the path unattended sessions and deploy scripts should use. Target
   boxes by LAN IP / the `~/.ssh/config` alias, **not** the `*.ts.net`
@@ -106,8 +106,8 @@ The fleet has two ways to SSH between boxes and they fail differently:
 | `bdrdev_to_bdrdungeongit` | `github.com:bDotRad/BdRDungeon.git` | BdRDungeon repo deploy key, generated 2026-08-26 — same not-yet-installed situation as the BdRAMAssist key above; pushing via `gh` HTTPS credential helper for now. |
 | `bdrdev_to_bdrwebguidevgit` | `github.com:bDotRad/BdRWebGUIDev.git` | BdRWebGUIDev repo deploy key, generated 2026-09-04. Comment `BdRDev-to-BdRWebGUIDevGIT`. **Not yet installed** as a deploy key on GitHub and **no `~/.ssh/config` alias yet** — the unattended session's classifier blocked the config edit, so both are handed to Brad in `BdRWebGUIDev/_Requests/rProject Setup.md`. Pushing via `gh` HTTPS credential helper until then. Intended alias: `github.com-bdrwebguidev`. |
 | ~~`id_ed25519_pi`~~ | `bdotrad@192.168.1.187` (`BdRadBirdDetector`) | **Key file missing from `~/.ssh` on this host as of 2026-09-06** — not carried over / removed in cleanup. Also `192.168.1.187` is on a different subnet from this host's `10.10.8.0/22` and the box isn't on the tailnet, so it's unreachable from here regardless of the key. Regenerate + reinstall in that Pi's `authorized_keys` if fleet-side access to BdRBirdDetector is needed again. |
-| `bdrdev_to_bdrpiamiserver` | `bdr@10.10.10.20` (`~/.ssh/config` alias `BdRPiAMI`; the box's own hostname is now `BdRPiSrvAMI`) | SSH into the AMI Raspberry Pi (Ubuntu 24.04 aarch64, replaces the retired VM `BdRSrvAMI`). **Regenerated 2026-09-05** — both halves re-dated then; the 2026-08-27 key was replaced. **LAN key auth confirmed working 2026-09-06**: `ssh BdRPiAMI` connects headless as `bdr`, public half is installed in the Pi's `authorized_keys`. The tailnet path to the same box (`bdr@100.86.25.88`) is *not* headless — see the Tailscale SSH section above. |
-| `bdrdev_to_bdrpidungeonserver` | `bdr@10.10.10.30` (`~/.ssh/config` alias `BdRPiSrvRatsNest` (was `BdRPiDungeon`, still accepted); box hostname `BdRPiSrvRatsNest`) | SSH into the RATSNEST Raspberry Pi 5 (Debian 13 trixie, aarch64). Generated 2026-09-15, same pattern as `BdRPiAMI`. **LAN key auth confirmed working 2026-09-16**: `ssh BdRPiDungeon` connects headless as `bdr`, `.pub` derivation matches. Alias renamed to `BdRPiSrvRatsNest` 2026-10-11 (Brad); the key file keeps its old name. |
+| `bdrdev_to_bdrpiamiserver` | `bdr@10.10.11.11` since 2026-11-25, DHCP reservation (`~/.ssh/config` alias `BdRPiAMI`, `HostKeyAlias 10.10.10.20` so the old known_hosts entry still matches; the box's own hostname is now `BdRPiSrvAMI`) | SSH into the AMI Raspberry Pi (Ubuntu 24.04 aarch64, replaces the retired VM `BdRSrvAMI`). **Regenerated 2026-09-05** — both halves re-dated then; the 2026-08-27 key was replaced. **LAN key auth confirmed working 2026-09-06**: `ssh BdRPiAMI` connects headless as `bdr`, public half is installed in the Pi's `authorized_keys`. The tailnet path to the same box (`bdr@100.86.25.88`) is *not* headless — see the Tailscale SSH section above. |
+| `bdrdev_to_bdrpidungeonserver` | `bdr@10.10.10.10` (was `.30` before the 2026-11-10 UniFi move; `~/.ssh/config` alias `BdRPiSrvRatsNest` (was `BdRPiDungeon`, still accepted); box hostname `BdRPiSrvRatsNest`) | SSH into the RATSNEST Raspberry Pi 5 (Debian 13 trixie, aarch64). Generated 2026-09-15, same pattern as `BdRPiAMI`. **LAN key auth confirmed working 2026-09-16**: `ssh BdRPiDungeon` connects headless as `bdr`, `.pub` derivation matches. Alias renamed to `BdRPiSrvRatsNest` 2026-10-11 (Brad); the key file keeps its old name. |
 | `bdrpisrvdungeon_to_bdratsnestgit` *(generated on `DUNGEON`, not this host)* | `github.com:bDotRad/BdRatsNest.git` | Read-only deploy key installed on the private `BdRatsNest` repo so `DUNGEON` can `git pull` it directly. New key, generated 2026-09-15/16 during the box's provisioning — doesn't replace anything. |
 | ~~`id_ed25519`~~ | unknown | **No longer present in `~/.ssh` on this host as of 2026-09-06** — the unexplained generic key was removed. Resolved. |
 

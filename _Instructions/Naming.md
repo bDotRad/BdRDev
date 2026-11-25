@@ -24,11 +24,11 @@ piece of work. This doc is about what to *call* things in prose and data.
 
 | handle | canonical | machine hostname | LAN | tailnet | aliases — DO NOT use |
 |---|---|---|---|---|---|
-| `DEV` | `BdRPiSrvDev` | `bdrpisrvdev` | `10.10.8.11` | `bdrpisrvdev.tail0ed3f6.ts.net` / `100.116.147.74` | BdRDev *(as a host)*, BdRVSrvDev, BdRSrvDev, "the dev box", `bdrdev.local` |
-| `AMI` | `BdRPiSrvAMI` | `BdRPiSrvAMI` | `10.10.10.20` | `bdrpisrvami.tail0ed3f6.ts.net` / `100.86.25.88` | BdRPiAMI *(SSH alias only — see note)*, BdRSrvAMI, PlanBdRadServer, "the Pi", `bdrpiami.local` |
-| `RATSNEST` | `BdRPiSrvRatsNest` | `BdRPiSrvRatsNest` | `10.10.10.30` | `bdrpisrvratsnest.tail0ed3f6.ts.net` / `100.73.131.60` | `DUNGEON`, BdRPiSrvDungeon, BdRSrvDungeon *(renamed 2026-09-27)*, `BdRpi` |
+| `DEV` | `BdRPiSrvDev` | `bdrpisrvdev` | `10.10.11.10` | `bdrpisrvdev.tail0ed3f6.ts.net` / `100.116.147.74` | BdRDev *(as a host)*, BdRVSrvDev, BdRSrvDev, "the dev box", `bdrdev.local` |
+| `AMI` | `BdRPiSrvAMI` | `BdRPiSrvAMI` | `10.10.11.11` | `bdrpisrvami.tail0ed3f6.ts.net` / `100.86.25.88` | BdRPiAMI *(SSH alias only — see note)*, BdRSrvAMI, PlanBdRadServer, "the Pi", `bdrpiami.local` |
+| `RATSNEST` | `BdRPiSrvRatsNest` | `BdRPiSrvRatsNest` | `10.10.10.10` | `bdrpisrvratsnest.tail0ed3f6.ts.net` / `100.73.131.60` | `DUNGEON`, BdRPiSrvDungeon, BdRSrvDungeon *(renamed 2026-09-27)*, `BdRpi` |
 | `BIRD` | `BdRBirdDetector` | `bdrbirddetector` | `192.168.1.187` | *(not on tailnet)* | BdRadBirdDetector, "the bird pi" |
-| `HA` | `HA` | `ratsnest` | `10.10.10.100` | *(not on tailnet)* | `RatsNest` *(was this box's handle until 2026-09-27; "RatsNest" now means the `RATSNEST` Pi)* — Home Assistant Green, **being retired** (going to Brad's parents) |
+| `RNA` | `BdRNA` | `ratsnest` | `10.10.10.100` | *(not on tailnet)* | `HA` *(handle until 2026-11-14)*, `RatsNest` *(handle until 2026-09-27; "RatsNest" now means the `RATSNEST` Pi)*, "the HA Green" — Home Assistant Green, **RNA = Rats Nest Automation**, the home-automation hub |
 
 The `RATSNEST` box used to be `DUNGEON`. "The Dungeon" is now just the
 room the `BdRDungeon` project works in, not a box. Its config repo
@@ -54,15 +54,18 @@ Canonical = the repo directory name. Handle is for tables and prose.
 | `AMAssist` | `BdRAMAssist` | bulk asset-management data prep, feeds PlanBdR | `AMI` |
 | `PlanBdR` | `PlanBdRad` | preventative-maintenance plan generator | `AMI` |
 | `Dungeon` | `BdRDungeon` | circuits and testing in "the Dungeon" — hub that talks to ESP32 field devices | `RATSNEST` *(planned)* |
-| `BdRatsNest` | `BdRatsNest` | the new home automation (Shelly now, ESP32 planned) — replaces the `HA` Home Assistant Green; handle stays `BdRatsNest` so it isn't confused with the `RATSNEST` box | `RATSNEST` |
+| `BdRatsNest` | `BdRatsNest` | Pi-hosted Shelly controller — **home automation being decommissioned (2026-11-14)**, replaced by `RNA`; the project is to become an experiments project (likely folded into / renamed like `BdRDungeon`) | `RATSNEST` |
+| `RNA` | `BdRNA` | **Rats Nest Automation** — everything to do with the Home Assistant Green: integrations, automations, dashboards, device inventory. Driven over the HA API | `RNA` |
 | `Bird` | `BdRBirdDetector` | distributed acoustic bird detection / localization | `BIRD` |
 | `WebGUI` | `BdRWebGUIDev` | one-page web-GUI sandbox, dev only | `DEV` |
-| `Apps` | `BdRapps` | static web apps shared with other people (BdRdraw, BdRbowtie, carry-panel-demo), `https://bdrapps.web.app` | Firebase Hosting *(no fleet box)* |
-| `Stuff` | `BdRStuff` | linked, searchable front end to the BdRDrop → BdRNotes library, `https://stuff.bdotrad.me` | Firebase Hosting *(no fleet box)* |
+| `Apps` | `BdRapps` | static web apps shared with other people (BdRdraw, carry-panel-demo, …; BdRbowtie archived), `https://apps.bdotrad.me` | Firebase `bdotrad-for-the-ppl` *(no fleet box)* |
+| `HIW` | `BdRHowIThinkItWorks` | How I Think It Works — public topic site, suggest/inbox, AI Skool, `https://howithinkitworks.bdotrad.me` | Firebase `bdotrad-for-the-ppl` *(no fleet box)* |
+| `Stuff` | `BdRStuff` | linked, searchable front end to the Drop → BdRNotes library, `https://stuff.bdotrad.me` | Firebase `bdotrad-for-me` *(no fleet box)* |
+| `Notes` | `BdRNotes` | Brad's private notes inbox + library: worker on `RATSNEST`, Drop upload page `https://drop.bdotrad.me` | `RATSNEST` + Firebase `bdotrad-for-me` |
 | `AMI-cfg` | `BdRPiSrvAMI` | server-config repo for the AMI box (nginx / TLS / provisioning) + **the canonical home of `srvhome`** (`srvhome/`) | `AMI` (pull-only) |
 | `RatsNest-cfg` | `BdRPiSrvRatsNest` | server-config repo for the RATSNEST box (nginx / TLS / tailscale / provisioning) + its `srvhome` landing page; was `BdRPiSrvDungeon` until 2026-10-11 | `RATSNEST` (pull-only) |
 | `DEV-cfg` | `BdRVSrvDev` | server-config repo for the DEV box (nginx / TLS / tailnet front door / CloudCLI) | `DEV` |
-| `ImpSys` | `BdRImpSys` | improvement-tracking system — nascent, only a checkout on `AMI` so far | `AMI` *(planned)* |
+| `ImpSys` | `BdRImpSys` | improvement-tracking system — worker `impsys.service` on `AMI` + online interface **MakeGood** `https://makegood.bdotrad.me` | `AMI` + Firebase `bdotrad-for-me` |
 | `CloudCLI` | *(third-party, no repo)* | `@cloudcli-ai/cloudcli` — Claude Code web UI | `DEV` |
 
 Aliases to never use in new writing: `BdRIS` → `ImpSys`/`BdRImpSys`;

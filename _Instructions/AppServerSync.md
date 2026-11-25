@@ -2,7 +2,7 @@
 
 Convention for projects that also run live on a separate "app server"
 machine (e.g. PlanBdRad and BdRAMAssist on the AMI Pi `BdRPiSrvAMI`,
-LAN `10.10.10.20` — formerly the retired `BdRSrvAMI` VM at
+LAN `10.10.10.20` (now `10.10.11.11` since 2026-11-25; the IPs below are history) — formerly the retired `BdRSrvAMI` VM at
 `192.168.100.20`) when a change needs to be made directly on that
 machine -- a live-troubleshooting tweak, a quick config fix, whatever.
 Historically that meant pushing straight from the app server's own git

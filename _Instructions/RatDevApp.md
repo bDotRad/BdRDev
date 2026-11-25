@@ -67,6 +67,9 @@ The Pi keys off the leading six digits. Files without them are ignored.
   `261115 BdRPropertyLab` → existing `BdRapps` (new page `/property_lab/`);
   `261119 BdRAIGuide` (renamed **BdotRads AI Skool** by Brad) → existing
   `BdRapps` (new page `/ai_skool/`, built from v2 brief + transcript).
+  `261121 HowIThinkStuffWorks` → new project `BdRHowIThinkItWorks`
+  (howithinkitworks.bdotrad.me, Brad kept that name; main page + topics,
+  AI Skool moved in as `/ai_skool/`; BdRapps hands the site over).
 
 ## Requests.md and Actions.md format
 
